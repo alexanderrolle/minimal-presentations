@@ -21,6 +21,15 @@ class BiGradedMatrix:
     def num_cols(self):
         return(self.matrix.shape[1])
         
+    def identity_matrix(self):
+        n = self.num_cols()
+        I = scipy.sparse.identity(n=n, dtype='int', format='csc')
+        Id = BiGradedMatrix(labels=self.labels, matrix=I)
+        return(Id)
+        
+    def get_col(self, j):
+        return(scipy.sparse.csc_matrix.getcol(self.matrix, j))        
+        
     # reduce the entries in a matrix mod 2
     def reduce(self):
         M = self.matrix
