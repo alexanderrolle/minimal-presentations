@@ -27,9 +27,24 @@ class BiGradedMatrix:
         Id = BiGradedMatrix(labels=self.labels, matrix=I)
         return(Id)
         
-    def get_col(self, j):
-        return(scipy.sparse.csc_matrix.getcol(self.matrix, j))        
+    def zero_vector(self):
+        m = self.num_cols()
+        x = scipy.sparse.csc_matrix((m, 1), dtype='int')
+        X = BiGradedMatrix(labels=[0], matrix=x)
+        return(X)
         
+    def get_col(self, j):
+        col = self.matrix.getcol(j)
+        label = self.labels[j]
+        R = BiGradedMatrix(label, col)
+        return(R)
+        
+    def entry_is_nonzero(self, i, j):
+        return(self.matrix[(i,j)] != 0)
+            
+    def insert_value(self, i, j, n):
+        self.matrix[(i,j)] = n
+
     # reduce the entries in a matrix mod 2
     def reduce(self):
         M = self.matrix
@@ -51,6 +66,18 @@ class BiGradedMatrix:
         self.matrix = self.matrix * (I + J)
         self.reduce()
         
+    def add_multiple_of_column(self, c, k, j):
+        
+        m = self.num_cols()
+        data = np.array([c])
+        row = np.array([k])
+        col = np.array([j])
+        J = scipy.sparse.csc_matrix((data, (row, col)), shape=(m, m), dtype='int')
+        I = scipy.sparse.identity(n=m, dtype='int', format='csc')
+        
+        self.matrix = self.matrix * (I + J)
+        self.reduce()
+        
     def get_piv(self, j):
         M = self.matrix
         col = scipy.sparse.csc_matrix.getcol(M, j)
@@ -58,3 +85,9 @@ class BiGradedMatrix:
             return(-1)
         else:
             return(max(col.indices))
+            
+    def keep_columns(self, cols):
+        self.matrix = self.matrix[:, cols]
+        
+    def keep_rows(self, rows):
+        self.matrix = self.matrix[rows, :]
