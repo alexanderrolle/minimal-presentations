@@ -168,11 +168,15 @@ def MinimizePres(P, row_labels):
     
     for j in range(n):
         p = P.get_piv(j)
-        if P.labels[j] == row_labels[p]:
-            cols_to_remove.append(j)
-            rows_to_remove.append(p)
-            for k in range(j, n):
-                P.add_multiple_of_column(P.matrix[p, k], j, k)
+        if p == -1:
+            return("P contains a zero column!")
+        else:
+            if P.labels[j] == row_labels[p]:
+                cols_to_remove.append(j)
+                rows_to_remove.append(p)
+                for k in range(j+1, n):
+                    if P.entry_is_nonzero(p, k):
+                        P.add_column(j, k)
                 
     cols = [i for i in range(P.num_cols())]
     rows = [i for i in range(P.num_rows())]
@@ -211,7 +215,6 @@ def MinimalPres(delta2, delta1):
     
     print("Running KerBasis took " + str(KerBasis_time))
     
-    
     pivots = pivot_array_of_B_ker(B)
     n = B.num_cols()
     m = len(S)
@@ -235,6 +238,47 @@ def MinimalPres(delta2, delta1):
     Total_time = MinimizePres_end - start
     
     print("Running MinimizePres took " + str(MinimizePres_time))
+    print("Total running time was " + str(Total_time))
+
+    return(P, row_labels)
+    
+def SemiMinimalPres(delta2, delta1):
+    
+    start = time.time()
+    
+    S = MinGens(delta2)
+    
+    MinGens_end = time.time()
+    MinGens_time = MinGens_end - start
+    
+    print("Running MinGens took " + str(MinGens_time))
+    
+    B = KerBasis(delta1)
+    
+    KerBasis_end = time.time()
+    KerBasis_time = KerBasis_end - MinGens_end
+    
+    print("Running KerBasis took " + str(KerBasis_time))
+    
+    pivots = pivot_array_of_B_ker(B)
+    n = B.num_cols()
+    m = len(S)
+    labels = [S[j][1] for j in range(m)]
+    matrix = scipy.sparse.csc_matrix((n,m), dtype='int')
+    P = BiGradedMatrix(labels, matrix)
+    
+    for j in range(m):
+        P.matrix[:, j] = Solve(B, pivots, S[j][0]).matrix
+        
+    row_labels = B.labels
+        
+    P_end = time.time()
+    P_time = P_end - KerBasis_end
+    
+    print("Computing P took " + str(P_time))
+
+    Total_time = P_end - start
+    
     print("Total running time was " + str(Total_time))
 
     return(P, row_labels)
