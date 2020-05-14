@@ -99,8 +99,8 @@ class BiGradedMatrix_lil:
     # add column k to column j
     def add_column(self, k, j):
         
-        col_k = self.matrix.getrow(k).rows[0]
-        col_j = self.matrix.getrow(j).rows[0]
+        col_k = self.matrix.rows[k]
+        col_j = self.matrix.rows[j]
         
         col_sum = []
 
@@ -139,7 +139,7 @@ class BiGradedMatrix_lil:
     def add_external_column(self, col, j):
         
         col_k = col
-        col_j = self.matrix.getrow(j).rows[0]
+        col_j = self.matrix.rows[j]
         
         col_sum = []
 
@@ -175,7 +175,7 @@ class BiGradedMatrix_lil:
         self.matrix.data[j] = [1 for i in range(len(col_sum))]
         
     def get_piv(self, j):
-        row = self.matrix.getrow(j).rows[0]
+        row = self.matrix.rows[j]
         if len(row) == 0:
             return(-1)
         else:
