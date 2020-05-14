@@ -169,6 +169,14 @@ def MatrixRep_v3(p_plus_one_simplices, p_simplices, p):
     labels = []
     matrix = scipy.sparse.lil_matrix((m,n), dtype='int')
 
+    print("here",m)
+
+    dict_p_simplices={}
+    for i in range(len(p_simplices)):
+        #p_simplices[i][0].sort()
+        #print(p_simplices[i])
+        dict_p_simplices[tuple(p_simplices[i][0])]=i
+
     for i in range(m):
         simplex = p_plus_one_simplices[i]
     
@@ -181,20 +189,22 @@ def MatrixRep_v3(p_plus_one_simplices, p_simplices, p):
         boundary = []
     
         for j in range(p+2):
-            boundary_simplex = [vertices[k] for k in range(p+2) if k != j]
-            boundary.append(boundary_simplex)
+            sigma = [vertices[k] for k in range(p+2) if k != j]
+            row_index = dict_p_simplices[tuple(sigma)]
+            col.append(row_index)
+            #rows = [index for index in range(n) if set(p_simplices[index][0]) == set(sigma)]
         
-        for sigma in boundary:
-            rows = [index for index in range(n) if set(p_simplices[index][0]) == set(sigma)]
-        
-            if len(rows) != 1:
-                print('multiple row indices!')
-            else:
-                index = rows[0]
-                #col[(index, 0)] = 1
-                col.append(index)
-    
+            #if len(rows) != 1:
+            #    print('multiple row indices!')
+            #else:
+            #    index = rows[0]
+            #    #col[(index, 0)] = 1
+            #    col.append(index)
+        col.sort()
+
         matrix[i, col] = [1 for i in range(len(col))]
+
+    print("and here")
     
     R = BiGradedMatrix_lil(labels, matrix)  
     
@@ -206,7 +216,10 @@ def FIRep_v3(bifiltration, p):
         return("to do!")
         
     else:
+        print("One")
         p_plus_one_simplices, p_simplices, p_minus_one_simplices = get_simplices(bifiltration, p)
+        print("Two")
         R = MatrixRep_v3(p_plus_one_simplices, p_simplices, p)
+        print("three")
         Q = MatrixRep_v3(p_simplices, p_minus_one_simplices, p - 1)
         return(R, Q)
