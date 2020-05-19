@@ -37,11 +37,28 @@ def BiRedSub_v2(R, z, pivs):
     
     return(R, pivs, cols_reduced_to_zero)
     
-def BiRedSub_MinGens_v2(R, z, pivs):
+#def BiRedSub_MinGens_v2(R, z, pivs):
+#        
+#    cols_not_reduced_to_zero = []
+#    
+#    Indices = [j for j in range(R.num_cols()) if R.labels[j][0] <= z[0] and R.labels[j][1] == z[1]]
+#    
+#    for j in Indices:
+#        l = R.get_piv(j)
+#        while l != -1 and pivs[l] != -1 and pivs[l] < j:
+#            k = pivs[l]
+#            R.add_column(k,j)
+#            l = R.get_piv(j)
+#        if l != -1 and R.labels[j] == z:
+#            cols_not_reduced_to_zero.append(j)
+#        if l != -1 and (pivs[l] == -1 or pivs[l] > j):
+#            pivs[l] = j
+#    
+#    return(R, pivs, cols_not_reduced_to_zero)
+    
+def BiRedSub_MinGens_v2(R, z, pivs, Indices):
         
     cols_not_reduced_to_zero = []
-    
-    Indices = [j for j in range(R.num_cols()) if R.labels[j][0] <= z[0] and R.labels[j][1] == z[1]]
     
     for j in Indices:
         l = R.get_piv(j)
@@ -56,11 +73,49 @@ def BiRedSub_MinGens_v2(R, z, pivs):
     
     return(R, pivs, cols_not_reduced_to_zero)
     
-def BiRedSubSlave_v2(R, V, z, pivs):
+#def BiRedSubSlave_v2(R, V, z, pivs):
+#        
+#    cols_reduced_to_zero = []
+#    
+#    Indices = [j for j in range(R.num_cols()) if R.labels[j][0] <= z[0] and R.labels[j][1] == z[1]]
+#    
+#    for j in Indices:
+#        l = R.get_piv(j)
+#        while l != -1 and pivs[l] != -1 and pivs[l] < j:
+#            k = pivs[l]
+#            R.add_column(k,j)
+#            V.add_column(k,j)
+#            if R.get_piv(j) == -1:
+#                cols_reduced_to_zero.append(j)
+#            l = R.get_piv(j)
+#        if l != -1 and (pivs[l] == -1 or pivs[l] > j):
+#            pivs[l] = j
+#    
+#    return(R, V, pivs, cols_reduced_to_zero)
+    
+#def BiRedSubSlave_v2(R, V, z, pivs):
+#        
+#    cols_reduced_to_zero = []
+#    
+#    Indices = [j for j in range(R.num_cols()) if R.labels[j][0] <= z[0] and R.labels[j][1] == z[1]]
+#    
+#    for j in Indices:
+#        l = R.get_piv(j)
+#        while l != -1 and pivs[l] != -1 and pivs[l] < j:
+#            k = pivs[l]
+#            R.add_column(k,j)
+#            V.add_column(k,j)
+#            l = R.get_piv(j)
+#            if l == -1:
+#                cols_reduced_to_zero.append(j)
+#        if l != -1 and (pivs[l] == -1 or pivs[l] > j):
+#            pivs[l] = j
+#    
+#    return(R, V, pivs, cols_reduced_to_zero)
+    
+def BiRedSubSlave_v2(R, V, z, pivs, Indices):
         
     cols_reduced_to_zero = []
-    
-    Indices = [j for j in range(R.num_cols()) if R.labels[j][0] <= z[0] and R.labels[j][1] == z[1]]
     
     for j in Indices:
         l = R.get_piv(j)
@@ -68,9 +123,9 @@ def BiRedSubSlave_v2(R, V, z, pivs):
             k = pivs[l]
             R.add_column(k,j)
             V.add_column(k,j)
-            if R.get_piv(j) == -1:
-                cols_reduced_to_zero.append(j)
             l = R.get_piv(j)
+            if l == -1:
+                cols_reduced_to_zero.append(j)
         if l != -1 and (pivs[l] == -1 or pivs[l] > j):
             pivs[l] = j
     
@@ -89,6 +144,47 @@ def KerBetti_v2(R):
     
     return(R, betti_0)
     
+def sort_labels(R):
+    
+    labels = R.labels
+    
+    sorted_labels = {}
+    current_label = -1
+    
+    for j, label in enumerate(labels):
+        if label[1] == current_label:
+            sorted_labels[label[1]].append((j, label[0]))
+        else:
+            sorted_labels[label[1]] = [(j, label[0])]
+            current_label = label[1]
+        
+    return(sorted_labels)
+    
+# uses scipy.sparse to turn the output into a bigraded matrix
+#def KerBasis_v2(R):
+#    
+#    V = R.identity_matrix()
+#    B_ker = []
+#    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+#    gr = grid_v2(R)
+#    
+#    for z in gr:
+#        R, V, pivs, cols_reduced_to_zero = BiRedSubSlave_v2(R, V, z, pivs)
+#        for j in cols_reduced_to_zero:
+#            B_ker.append((V.get_col(j), z))
+#     
+#    n = R.num_cols()
+#    m = len(B_ker)
+#    labels = [B_ker[j][1] for j in range(m)]
+#    matrix = scipy.sparse.lil_matrix((m,n), dtype='int')
+#    for j in range(m):
+#        indices = B_ker[j][0].matrix.rows[0]
+#        matrix[j, indices] = [1 for i in range(len(indices))]
+#        
+#    B = BiGradedMatrix_lil(labels, matrix)
+#    
+#    return(B)
+    
 # uses scipy.sparse to turn the output into a bigraded matrix
 def KerBasis_v2(R):
     
@@ -97,8 +193,16 @@ def KerBasis_v2(R):
     pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
     gr = grid_v2(R)
     
+    sorted_labels = sort_labels(R)
+    
     for z in gr:
-        R, V, pivs, cols_reduced_to_zero = BiRedSubSlave_v2(R, V, z, pivs)
+        Indices = []
+        for item in sorted_labels[z[1]]:
+            if item[1] <= z[0]:
+                Indices.append(item[0])
+            else:
+                break
+        R, V, pivs, cols_reduced_to_zero = BiRedSubSlave_v2(R, V, z, pivs, Indices)
         for j in cols_reduced_to_zero:
             B_ker.append((V.get_col(j), z))
      
@@ -114,14 +218,35 @@ def KerBasis_v2(R):
     
     return(B)
     
+#def MinGens_v2(R):
+#    
+#    S = []
+#    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+#    gr = grid_v2(R)
+#    
+#    for z in gr:
+#        R, pivs, cols_not_reduced_to_zero = BiRedSub_MinGens_v2(R, z, pivs)
+#        for j in cols_not_reduced_to_zero:
+#            S.append((R.get_col(j), z))
+#    
+#    return(S)
+    
 def MinGens_v2(R):
     
     S = []
     pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
     gr = grid_v2(R)
     
+    sorted_labels = sort_labels(R)
+    
     for z in gr:
-        R, pivs, cols_not_reduced_to_zero = BiRedSub_MinGens_v2(R, z, pivs)
+        Indices = []
+        for item in sorted_labels[z[1]]:
+            if item[1] <= z[0]:
+                Indices.append(item[0])
+            else:
+                break
+        R, pivs, cols_not_reduced_to_zero = BiRedSub_MinGens_v2(R, z, pivs, Indices)
         for j in cols_not_reduced_to_zero:
             S.append((R.get_col(j), z))
     
@@ -136,20 +261,35 @@ def pivot_array_of_B_ker(A):
         
     return(pivots)
     
+#def Solve_v2(A, pivots, B):
+#    
+#    X = A.zero_vector()
+#    
+#    for i in reversed(range(A.num_rows())):
+#        if B.entry_is_nonzero(i, 0):
+#            if pivots[i] == -1:
+#                print('I could not find the pivot!')
+#            else:
+#                j = pivots[i]
+#                X.insert_value(j, 0, 1)
+#                col = A.matrix.rows[j]
+#                B.add_external_column(col, 0)
+#                
+#    return(X)
+    
 def Solve_v2(A, pivots, B):
     
     X = A.zero_vector()
     
-    for i in reversed(range(A.num_rows())):
-        if B.entry_is_nonzero(i, 0):
-            if pivots[i] == -1:
-                print('I could not find the pivot!')
-            else:
-                j = pivots[i]
-                X.insert_value(j, 0, 1)
-                col = A.matrix.rows[j]
-                B.add_external_column(col, 0)
-                
+    p = B.get_piv(0)
+    
+    while p != -1:
+        k = pivots[p]
+        X.insert_value(k, 0, 1)
+        col = A.matrix.rows[k]
+        B.add_external_column(col, 0)
+        p = B.get_piv(0)
+        
     return(X)
     
 def MinimizePres_v2(P, row_labels):
