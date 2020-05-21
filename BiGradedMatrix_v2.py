@@ -10,7 +10,7 @@ using scipy.sparse.lil_matrix
 
 """
 
-import numpy as np
+#import numpy as np
 import scipy.sparse
 #import heapq
 

@@ -10,12 +10,28 @@ import numpy as np
 import scipy.sparse
 from BiGradedMatrix_v2 import *
 import time
+import heapq
 
 def grid_v2(R):
     labels = list(set(R.labels))
     grid_with_repetition = [(labels[i][0], labels[j][1]) for i in range(len(labels)) for j in range(len(labels))]
     grid = list(set(grid_with_repetition))
     grid.sort()
+    return(grid)
+    
+def grid_v3(R):
+    
+    labels = list(set(R.labels))
+    
+    x_coords_w_rep = [label[0] for label in labels]
+    x_coords = list(set(x_coords_w_rep))
+    y_coords_w_rep = [label[1] for label in labels]
+    y_coords = list(set(y_coords_w_rep))
+    
+    grid = [(x, y) for x in x_coords for y in y_coords]
+    
+    grid.sort()
+
     return(grid)
 
 def BiRedSub_v2(R, z, pivs):
@@ -72,6 +88,32 @@ def BiRedSub_MinGens_v2(R, z, pivs, Indices):
             pivs[l] = j
     
     return(R, pivs, cols_not_reduced_to_zero)
+    
+def BiRedSub_MinGens_v3(R, z, pivs, current_columns, X):
+        
+    cols_not_reduced_to_zero = []
+    
+    for j in current_columns:
+        heapq.heappush(X[z[1]], j)
+        
+    while len(X[z[1]]) != 0:
+        j = heapq.heappop(X[z[1]])
+        l = R.get_piv(j)
+        while l != -1 and pivs[l] != -1 and pivs[l] < j:
+            k = pivs[l]
+            R.add_column(k, j)
+            l = R.get_piv(j)
+        if l != -1 and R.labels[j] == z:
+            cols_not_reduced_to_zero.append(j)
+        if l != -1 and pivs[l] == -1:
+            pivs[l] = j
+        if l != -1 and pivs[l] > j:
+            p = pivs[l]
+            label = R.labels[p]
+            heapq.heappush(X[label[1]], p)
+            pivs[l] = j
+    
+    return(R, pivs, X, cols_not_reduced_to_zero)
     
 #def BiRedSubSlave_v2(R, V, z, pivs):
 #        
@@ -130,6 +172,33 @@ def BiRedSubSlave_v2(R, V, z, pivs, Indices):
             pivs[l] = j
     
     return(R, V, pivs, cols_reduced_to_zero)
+    
+def BiRedSubSlave_v3(R, V, z, pivs, current_columns, X):
+        
+    cols_reduced_to_zero = []
+    
+    for j in current_columns:
+        heapq.heappush(X[z[1]], j)
+    
+    while len(X[z[1]]) != 0:
+        j = heapq.heappop(X[z[1]])
+        l = R.get_piv(j)
+        while l != -1 and pivs[l] != -1 and pivs[l] < j:
+            k = pivs[l]
+            R.add_column(k, j)
+            V.add_column(k, j)
+            l = R.get_piv(j)
+            if l == -1:
+                cols_reduced_to_zero.append(j)
+        if l != -1 and pivs[l] == -1:
+            pivs[l] = j
+        if l != -1 and pivs[l] > j:
+            p = pivs[l]
+            label = R.labels[p]
+            heapq.heappush(X[label[1]], p)
+            pivs[l] = j
+    
+    return(R, V, pivs, X, cols_reduced_to_zero)
     
 def KerBetti_v2(R):
     
@@ -191,9 +260,18 @@ def KerBasis_v2(R):
     V = R.identity_matrix()
     B_ker = []
     pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
-    gr = grid_v2(R)
     
+    start = time.time()
+    gr = grid_v2(R)
+    end = time.time()
+    
+    print("Computing grid took " + str(end - start))
+    
+    start = time.time()
     sorted_labels = sort_labels(R)
+    end = time.time()
+    
+    print("Sorting labels took " + str(end - start))
     
     for z in gr:
         Indices = []
@@ -205,7 +283,8 @@ def KerBasis_v2(R):
         R, V, pivs, cols_reduced_to_zero = BiRedSubSlave_v2(R, V, z, pivs, Indices)
         for j in cols_reduced_to_zero:
             B_ker.append((V.get_col(j), z))
-     
+    
+    start = time.time()
     n = R.num_cols()
     m = len(B_ker)
     labels = [B_ker[j][1] for j in range(m)]
@@ -215,7 +294,121 @@ def KerBasis_v2(R):
         matrix[j, indices] = [1 for i in range(len(indices))]
         
     B = BiGradedMatrix_lil(labels, matrix)
+    end = time.time()
     
+    print("Assembling B took " + str(end-start))
+    
+    return(B)
+    
+# uses scipy.sparse to turn the output into a bigraded matrix
+def KerBasis_v3(R):
+    
+    V = R.identity_matrix()
+    B_ker = []
+    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+    
+#    start = time.time()
+    gr = grid_v3(R)
+#    end = time.time()
+    
+#    print("Computing grid took " + str(end - start))
+    
+#    start = time.time()
+    sorted_labels = sort_labels(R)
+#    end = time.time()
+    
+#    print("Sorting labels took " + str(end - start))
+    
+    for z in gr:
+        Indices = []
+        for item in sorted_labels[z[1]]:
+            if item[1] <= z[0]:
+                Indices.append(item[0])
+            else:
+                break
+        R, V, pivs, cols_reduced_to_zero = BiRedSubSlave_v2(R, V, z, pivs, Indices)
+        for j in cols_reduced_to_zero:
+            B_ker.append((V.matrix.rows[j], z))
+    
+#    start = time.time()
+    n = R.num_cols()
+    m = len(B_ker)
+    labels = [B_ker[j][1] for j in range(m)]
+    matrix = scipy.sparse.lil_matrix((m,n), dtype='int')
+    
+    for j in range(m):
+        matrix.rows[j] = B_ker[j][0]
+        matrix.data[j] = [1 for i in range(len(B_ker[j][0]))]
+        
+    B = BiGradedMatrix_lil(labels, matrix)
+#    end = time.time()
+    
+#    print("Assembling B took " + str(end-start))
+    return(B)
+    
+def columns_by_label(R):
+    
+    labels = R.labels
+    
+    columns_by_label = {}
+    current_label = (-1, -1)
+    
+    for j, label in enumerate(labels):
+        if label == current_label:
+            columns_by_label[label].append(j)
+        else:
+            columns_by_label[label] = [j]
+            current_label = label
+            
+    return(columns_by_label)
+    
+# uses scipy.sparse to turn the output into a bigraded matrix
+def KerBasis_v4(R):
+    
+    V = R.identity_matrix()
+    B_ker = []
+    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+    columns = columns_by_label(R)
+    
+#    start = time.time()
+    gr = grid_v3(R)
+#    end = time.time()
+    
+#    print("Computing grid took " + str(end - start))
+    
+#    start = time.time()
+    y_coords_w_rep = []
+    for z in gr:
+        y_coords_w_rep.append(z[1])
+    y_coords = list(set(y_coords_w_rep))
+    X = [[] for i in range(len(y_coords))]
+#    end = time.time()
+    
+#    print("Initializing X took " + str(end-start))
+    
+    for z in gr:
+        if z in columns:
+            current_columns = columns[z]
+        else:
+            current_columns = []
+        R, V, pivs, X, cols_reduced_to_zero = BiRedSubSlave_v3(R, V, z, pivs, current_columns, X)
+        for j in cols_reduced_to_zero:
+            B_ker.append((V.matrix.rows[j], z))
+     
+#    start = time.time()
+    n = R.num_cols()
+    m = len(B_ker)
+    labels = [B_ker[j][1] for j in range(m)]
+    matrix = scipy.sparse.lil_matrix((m,n), dtype='int')
+    
+    for j in range(m):
+        matrix.rows[j] = B_ker[j][0]
+        matrix.data[j] = [1 for i in range(len(B_ker[j][0]))]
+        
+    B = BiGradedMatrix_lil(labels, matrix)
+#    end = time.time()
+    
+#    print("Assembling B took " + str(end-start))
     return(B)
     
 #def MinGens_v2(R):
@@ -235,7 +428,7 @@ def MinGens_v2(R):
     
     S = []
     pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
-    gr = grid_v2(R)
+    gr = grid_v3(R)
     
     sorted_labels = sort_labels(R)
     
@@ -247,6 +440,30 @@ def MinGens_v2(R):
             else:
                 break
         R, pivs, cols_not_reduced_to_zero = BiRedSub_MinGens_v2(R, z, pivs, Indices)
+        for j in cols_not_reduced_to_zero:
+            S.append((R.get_col(j), z))
+    
+    return(S)
+    
+def MinGens_v3(R):
+    
+    S = []
+    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+    columns = columns_by_label(R)
+    gr = grid_v3(R)
+    
+    y_coords_w_rep = []
+    for z in gr:
+        y_coords_w_rep.append(z[1])
+    y_coords = list(set(y_coords_w_rep))
+    X = [[] for i in range(len(y_coords))]
+    
+    for z in gr:
+        if z in columns:
+            current_columns = columns[z]
+        else:
+            current_columns = []
+        R, pivs, X, cols_not_reduced_to_zero = BiRedSub_MinGens_v3(R, z, pivs, current_columns, X)
         for j in cols_not_reduced_to_zero:
             S.append((R.get_col(j), z))
     
@@ -440,23 +657,29 @@ def MinimizePres_v2(P, row_labels):
 # where delta2 represents a map F^2 -> F^1, 
 # and delta1 represents a map F^1 -> F^0
     
-def MinimalPres_v2(delta2, delta1):
+def MinimalPres(delta2, delta1, use_opt=False):
+    
+    beginning = time.time()
+    
+    if use_opt == True:
+        S = MinGens_v3(delta2)
+    else:
+        S = MinGens_v2(delta2)
+        
+    end = time.time()    
+    print("Running MinGens took " + str(end-beginning))
     
     start = time.time()
     
-    S = MinGens_v2(delta2)
+    if use_opt == True:
+        B = KerBasis_v4(delta1)
+    else:
+        B = KerBasis_v3(delta1)
+        
+    end = time.time()    
+    print("Running KerBasis took " + str(end-start))
     
-    MinGens_end = time.time()
-    MinGens_time = MinGens_end - start
-    
-    print("Running MinGens took " + str(MinGens_time))
-    
-    B = KerBasis_v2(delta1)
-    
-    KerBasis_end = time.time()
-    KerBasis_time = KerBasis_end - MinGens_end
-    
-    print("Running KerBasis took " + str(KerBasis_time))
+    start = time.time()
     
     pivots = pivot_array_of_B_ker(B)
     n = B.num_cols()
@@ -468,19 +691,16 @@ def MinimalPres_v2(delta2, delta1):
     for j in range(m):
         P.matrix[j, :] = Solve_v2(B, pivots, S[j][0]).matrix
         
-    P_end = time.time()
-    P_time = P_end - KerBasis_end
+    end = time.time()
+    print("Computing P took " + str(end-start))
     
-    print("Computing P took " + str(P_time))
+    start = time.time()
     
     row_labels = B.labels
     P, row_labels = MinimizePres_v2(P, row_labels)
     
-    MinimizePres_end = time.time()
-    MinimizePres_time = MinimizePres_end - P_end
-    Total_time = MinimizePres_end - start
-    
-    print("Running MinimizePres took " + str(MinimizePres_time))
-    print("Total running time was " + str(Total_time))
+    end = time.time()
+    print("Running MinimizePres took " + str(end-start))
+    print("Total running time was " + str(end-beginning))
 
     return(P, row_labels)
