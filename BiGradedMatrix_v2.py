@@ -179,7 +179,7 @@ class BiGradedMatrix_lil:
         if len(row) == 0:
             return(-1)
         else:
-            return(max(row))
+            return(row[-1])
             
     def keep_columns(self, cols):
         self.matrix = self.matrix[cols, :]

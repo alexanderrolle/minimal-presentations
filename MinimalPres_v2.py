@@ -445,6 +445,27 @@ def MinGens_v2(R):
     
     return(S)
     
+def MinGens_v2a(R):
+    
+    S = []
+    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+    gr = grid_v3(R)
+    
+    sorted_labels = sort_labels(R)
+    
+    for z in gr:
+        Indices = []
+        for item in sorted_labels[z[1]]:
+            if item[1] <= z[0]:
+                Indices.append(item[0])
+            else:
+                break
+        R, pivs, cols_not_reduced_to_zero = BiRedSub_MinGens_v2(R, z, pivs, Indices)
+        for j in cols_not_reduced_to_zero:
+            S.append((R.matrix.rows[j], z))
+    
+    return(S)
+    
 def MinGens_v3(R):
     
     S = []
@@ -466,6 +487,30 @@ def MinGens_v3(R):
         R, pivs, X, cols_not_reduced_to_zero = BiRedSub_MinGens_v3(R, z, pivs, current_columns, X)
         for j in cols_not_reduced_to_zero:
             S.append((R.get_col(j), z))
+    
+    return(S)
+    
+def MinGens_v4(R):
+    
+    S = []
+    pivs = np.full(shape=R.num_rows(), fill_value=-1, dtype='int', order='C')
+    columns = columns_by_label(R)
+    gr = grid_v3(R)
+    
+    y_coords_w_rep = []
+    for z in gr:
+        y_coords_w_rep.append(z[1])
+    y_coords = list(set(y_coords_w_rep))
+    X = [[] for i in range(len(y_coords))]
+    
+    for z in gr:
+        if z in columns:
+            current_columns = columns[z]
+        else:
+            current_columns = []
+        R, pivs, X, cols_not_reduced_to_zero = BiRedSub_MinGens_v3(R, z, pivs, current_columns, X)
+        for j in cols_not_reduced_to_zero:
+            S.append((R.matrix.rows[j], z))
     
     return(S)
     
@@ -509,6 +554,21 @@ def Solve_v2(A, pivots, B):
         
     return(X)
     
+def Solve_v3(A, pivots, B):
+    
+    X = []
+    
+    while len(B) != 0:
+        p = B[-1]
+        k = pivots[p]
+        X.append(k)
+        col = A.matrix.rows[k]
+        B = add_columns(B, col)
+        
+    X.sort()
+        
+    return(X)
+    
 def MinimizePres_v2(P, row_labels):
     
     n = P.num_cols()
@@ -541,6 +601,103 @@ def MinimizePres_v2(P, row_labels):
     P.keep_rows(rows)
     
     return(P, row_labels)
+    
+def add_columns(col_k, col_j):
+
+    col_sum = []
+
+    length_k = len(col_k)
+    length_j = len(col_j)
+
+    position_k = 0
+    position_j = 0
+
+    while position_k < length_k or position_j < length_j:
+        if position_k >= length_k:
+            for i in range(position_j, length_j):
+                col_sum.append(col_j[i])
+            break
+        if position_j >= length_j:
+            for i in range(position_k, length_k):
+                col_sum.append(col_k[i])
+            break
+        if col_k[position_k] == col_j[position_j]:
+            position_k = position_k + 1
+            position_j = position_j + 1
+            continue
+        if col_k[position_k] < col_j[position_j]:
+            col_sum.append(col_k[position_k])
+            position_k = position_k + 1
+            continue
+        if col_k[position_k] > col_j[position_j]:
+            col_sum.append(col_j[position_j])
+            position_j = position_j + 1
+            continue
+
+    return(col_sum)
+    
+def MinimizePres_v3(P, row_labels):
+    
+    n = P.num_cols()
+    pivs = {}
+    
+    for j in range(n):
+        p = P.get_piv(j)
+        if P.labels[j] == row_labels[p]:
+            if p in pivs:
+                pivs[p].append(j)
+            else:
+                pivs[p] = [j]
+    
+    new_cols = []
+
+    for j in range(n):
+        
+        p = P.get_piv(j)
+        
+        while P.labels[j] == row_labels[p] and len(pivs[p]) > 1 and pivs[p][0] < j:
+            k = pivs[p][0]
+            P.add_column(k, j)
+            p = P.get_piv(j)
+        
+        if P.labels[j] != row_labels[p]:
+            old_col = P.matrix.rows[j]
+            new_col = []
+            while len(old_col) != 0:
+                p = old_col[-1]
+                if p in pivs and pivs[p][0] < j:
+                    k = pivs[p][0]
+                    col_k = P.matrix.rows[k]
+                    old_col = add_columns(old_col, col_k)
+                else:
+                    new_col.append(p)
+                    del old_col[-1]
+            new_col.sort()
+            new_cols.append((j, new_col))
+            
+    m = len(new_cols)
+    k = P.num_rows()
+    X = scipy.sparse.lil_matrix((m, k), dtype='int')
+    
+    for j in range(m):
+        X.rows[j] = new_cols[j][1]
+        X.data[j] = [1 for i in range(len(new_cols[j][1]))]
+        
+    labels = []
+    
+    for col in new_cols:
+        labels.append(P.labels[col[0]])
+        
+    B = BiGradedMatrix_lil(labels, X)
+
+    rows = [i for i in range(k)]
+    for i in pivs.keys():
+        rows.remove(i)
+        
+    new_row_labels = [row_labels[i] for i in rows]
+    B.keep_rows(rows)
+    
+    return(B, new_row_labels)
     
 #def MinimizePres(P, row_labels):
 #    
@@ -657,11 +814,11 @@ def MinimizePres_v2(P, row_labels):
 # where delta2 represents a map F^2 -> F^1, 
 # and delta1 represents a map F^1 -> F^0
     
-def MinimalPres(delta2, delta1, use_opt=False):
+def MinimalPres(delta2, delta1, use_opt1=False, use_opt2=False):
     
     beginning = time.time()
     
-    if use_opt == True:
+    if use_opt1 == True:
         S = MinGens_v3(delta2)
     else:
         S = MinGens_v2(delta2)
@@ -671,7 +828,7 @@ def MinimalPres(delta2, delta1, use_opt=False):
     
     start = time.time()
     
-    if use_opt == True:
+    if use_opt1 == True:
         B = KerBasis_v4(delta1)
     else:
         B = KerBasis_v3(delta1)
@@ -696,8 +853,71 @@ def MinimalPres(delta2, delta1, use_opt=False):
     
     start = time.time()
     
-    row_labels = B.labels
-    P, row_labels = MinimizePres_v2(P, row_labels)
+    if use_opt2 == True:
+        row_labels = B.labels
+        P, row_labels = MinimizePres_v3(P, row_labels)
+    else:
+        row_labels = B.labels
+        P, row_labels = MinimizePres_v2(P, row_labels)
+    
+    end = time.time()
+    print("Running MinimizePres took " + str(end-start))
+    print("Total running time was " + str(end-beginning))
+
+    return(P, row_labels)
+    
+# (delta2, delta1) is an FI-Rep; so, delta2, delta1 are bigraded matrices,
+# where delta2 represents a map F^2 -> F^1, 
+# and delta1 represents a map F^1 -> F^0
+    
+def MinimalPres_v2(delta2, delta1, use_opt1=False, use_opt2=False):
+    
+    beginning = time.time()
+    
+    if use_opt1 == True:
+        S = MinGens_v4(delta2)
+    else:
+        S = MinGens_v2a(delta2)
+        
+    end = time.time()    
+    print("Running MinGens took " + str(end-beginning))
+    
+    start = time.time()
+    
+    if use_opt1 == True:
+        B = KerBasis_v4(delta1)
+    else:
+        B = KerBasis_v3(delta1)
+        
+    end = time.time()    
+    print("Running KerBasis took " + str(end-start))
+    
+    start = time.time()
+    
+    pivots = pivot_array_of_B_ker(B)
+    n = B.num_cols()
+    m = len(S)
+    labels = [S[j][1] for j in range(m)]
+    M = scipy.sparse.lil_matrix((m,n), dtype='int')
+    
+    for j in range(m):
+        col = Solve_v3(B, pivots, S[j][0])
+        M.rows[j] = col
+        M.data[j] = [1 for i in range(len(col))]
+        
+    P = BiGradedMatrix_lil(labels, M)
+        
+    end = time.time()
+    print("Computing P took " + str(end-start))
+    
+    start = time.time()
+    
+    if use_opt2 == True:
+        row_labels = B.labels
+        P, row_labels = MinimizePres_v3(P, row_labels)
+    else:
+        row_labels = B.labels
+        P, row_labels = MinimizePres_v2(P, row_labels)
     
     end = time.time()
     print("Running MinimizePres took " + str(end-start))

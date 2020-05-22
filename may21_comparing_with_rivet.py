@@ -18,7 +18,7 @@ R, Q = FIRep_v3(bifiltration, 1)
 end = time.time()
 print("Producing FIRep took " + str(end-start))
 
-P, row_labels = MinimalPres(R, Q, use_opt=True)
+P, row_labels = MinimalPres_v2(R, Q, use_opt1=True, use_opt2=True)
 
 U, resorted_row_labels = permute_matrix(P, row_labels)
 
