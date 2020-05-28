@@ -659,6 +659,11 @@ def MinimizePres_v3(P, row_labels):
             k = pivs[p][0]
             P.add_column(k, j)
             p = P.get_piv(j)
+            if pivs.get(p) == None:
+                if P.labels[j] == row_labels[p]:
+                    pivs[p] = [j]
+                else:
+                    break
         
         if P.labels[j] != row_labels[p]:
             old_col = P.matrix.rows[j]
@@ -669,6 +674,10 @@ def MinimizePres_v3(P, row_labels):
                     k = pivs[p][0]
                     col_k = P.matrix.rows[k]
                     old_col = add_columns(old_col, col_k)
+#                    if len(old_col) != 0:
+#                        if old_col[-1] >= p:
+#                            print(j, k, p, old_col, col_k)
+#                            return(None)
                 else:
                     new_col.append(p)
                     del old_col[-1]
