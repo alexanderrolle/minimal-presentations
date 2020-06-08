@@ -543,44 +543,89 @@ namespace phat {
     return std::binary_search(col.begin(),col.end(),m);
   }
 
+
+
   template<typename GradedMatrix_>
     void minimize(GradedMatrix_& M,GradedMatrix_& result) {
-    
+
+
+#if LAZY_MINIMIZATION
+    GradedMatrix_& VVM=M;
+#else    
     GradedMatrix<phat::vector_vector> VVM;
     convert_to_vec_vec(M,VVM);
+#endif
 
     typedef std::vector<index> Column;
 
+
+    VVM.assign_pivots();
+
     std::set<index> rows_to_delete;
 
-    std::vector<Column> cols_to_keep;
+    std::vector<index> cols_to_keep;
     std::vector<Grade> col_grades;
 
     for(index i=0;i<VVM.get_num_cols();i++) {
-      if(VVM.is_empty(i)) {
-	continue;
-      }
-      index col_grade_x = VVM.grades[i].first_index;
-      index col_grade_y = VVM.grades[i].second_index;
-      index p = M.get_max_index(i);
-      index row_grade_x = VVM.row_grades[p].first_index;
-      index row_grade_y = VVM.row_grades[p].second_index;
-      if(col_grade_x==row_grade_x && col_grade_y==row_grade_y) {
-	//std::cout << "Found removable pair " << p << " " << i << std::endl;
-	rows_to_delete.insert(p);
-	for(index j=i+1;j<VVM.get_num_cols();j++) {
-	  if(contains(VVM,j,p)) {
-	    VVM.add_to(i,j);
-	  }
+      //std::cout << "i=" << i << std::endl;
+      while(! VVM.is_empty(i)) {
+	
+	index col_grade_x = VVM.grades[i].first_index;
+	index col_grade_y = VVM.grades[i].second_index;
+	index p = VVM.get_max_index(i);
+	index row_grade_x = VVM.row_grades[p].first_index;
+	index row_grade_y = VVM.row_grades[p].second_index;
+	//std::cout << "Pivot is " <<  p << std::endl;
+	if(col_grade_x!=row_grade_x || col_grade_y!=row_grade_y) {
+	  cols_to_keep.push_back(i);
+	  col_grades.push_back(VVM.grades[i]);
+	  break;
 	}
-      } else {
-	Column col;
-	VVM.get_col(i,col);
-	cols_to_keep.push_back(col);
-	col_grades.push_back(VVM.grades[i]);
+	if(VVM.pivots[p]==-1) {
+	  //std::cout << "Found removable pair " << p << " " << i << std::endl;
+	  rows_to_delete.insert(p);
+#if !LAZY_MINIMIZATION
+	  for(index j=i+1;j<VVM.get_num_cols();j++) {
+	    if(contains(VVM,j,p)) {
+	      VVM.add_to(i,j);
+	    }
+	  }
+#endif
+	  VVM.pivots[p]=i;
+	  break;
+	} else {
+	  //std::cout << "add a column" << VVM.pivots[p] << std::endl;
+	  VVM.add_to(VVM.pivots[p],i);
+	}
       }
-      
     }
+
+    std::vector<Column> new_cols;
+    new_cols.resize(cols_to_keep.size());
+
+#if LAZY_MINIMIZATION
+    //std::cout << "HERE I AM " << std::endl;
+    for(index k=0;k<cols_to_keep.size();k++) {
+      Column& col=new_cols[k];
+      index i = cols_to_keep[k];
+      while(!VVM.is_empty(i)) {
+	index p = VVM.get_max_index(i);
+	if(VVM.pivots[p]==-1) {
+	  col.push_back(p);
+	  VVM.remove_max(i);
+	} else {
+	  VVM.add_to(VVM.pivots[p],i);
+	}
+      }
+      std::reverse(col.begin(),col.end());
+    }
+#else
+    for(index i=0;i<cols_to_keep.size();i++) {
+      Column& col=new_cols[i];
+      VVM.get_col(cols_to_keep[i],new_cols[i]);
+    }
+#endif
+    
     
     index nr = VVM.num_rows;
     //std::cout << "Number of rows of VVM: " << nr << std::endl;
@@ -598,8 +643,9 @@ namespace phat {
       }
     }
     // Update columns using re-index map
+    
     for(index i=0;i<cols_to_keep.size();i++) {
-      Column& col = cols_to_keep[i];
+      Column& col = new_cols[i];
       for(int j=0;j<col.size();j++) {
 	//std::cout << "Lookup " << col[j] << ", count=" << index_map.count(col[j]) << std::endl;
 	assert(index_map.count(col[j]));
@@ -612,9 +658,8 @@ namespace phat {
     result.grades = col_grades;
     result.row_grades=res_row_grades;
     for(int i=0;i<cols_to_keep.size();i++) {
-      result.set_col(i,cols_to_keep[i]);
+      result.set_col(i,new_cols[i]);
     }
   }
-  
   
 }//of namespace phat
