@@ -8,7 +8,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 include_directories(/home/mkerber/phat_swap_reduction/include)
 
-find_package(Boost REQUIRED Timer)
+find_package(Boost REQUIRED timer)
 
 add_executable(main "main.cpp")
 target_link_libraries(main "-lboost_timer")
