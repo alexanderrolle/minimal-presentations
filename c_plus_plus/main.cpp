@@ -1,9 +1,10 @@
+#define SMART_REDUCTION 1
 
-
-#define LAZY_MINIMIZATION 0
-
+#define LAZY_MINIMIZATION 1
 
 #define TIMERS 1
+
+#define SWAP_GRADE 0
 
 #include <iostream>
 #include <fstream>
@@ -82,7 +83,6 @@ int main(int argc, char** argv) {
   firep_timer.stop();
 #endif
 
-  
   //GM1.print();
   //GM2.print();
 

@@ -5,6 +5,8 @@ namespace phat {
 
   typedef std::pair<index,index> index_pair;
 
+  typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
+
   struct Grade {
     double first_val;
     index first_index;
@@ -62,6 +64,10 @@ namespace phat {
     
     std::vector<index> pivots;
 
+#if SMART_REDUCTION
+    std::vector<PQ> pq_row;
+#endif
+
     boundary_matrix<Representation> slave;
 
     void print(bool print_row_grades=false,bool print_indices=true) {
@@ -97,7 +103,7 @@ namespace phat {
       
     }
 
-    void reduce_column(index i, bool use_slave=false) {
+    void reduce_column(index i, bool use_slave=false, bool notify_pq=false) {
       
       //std::cout << "Reduce " << i << std::endl;
 
@@ -133,6 +139,15 @@ namespace phat {
 	}
 	p=this->get_max_index(i);
       }
+#if SMART_REDUCTION
+      if(notify_pq && p!=-1 && pivots[p]>i) {
+
+	index j = pivots[p];
+	index gr_y_index = this->grades[j].second_index;
+	//std::cout << "SCHEDULING COLUMN FOR LATER " << i << " " << j << " " << this->grades[j].first_index<< " " << gr_y_index << std::endl;
+	this->pq_row[gr_y_index].push(j);
+      }
+#endif
       if(p!=-1 && (pivots[p]==-1 || pivots[p]>i)) {
 	pivots[p]=i;
       }
@@ -312,7 +327,11 @@ namespace phat {
       std::stringstream sstr(line);
       double x,y;
       sstr >> x >> y;
+#if SWAP_GRADE
+      Grade grade(y,x);
+#else
       Grade grade(x,y);
+#endif
       sstr >> next;
       if(next!=";") {
 	std::cerr << "Semicolon missing" << std::endl;
@@ -332,7 +351,11 @@ namespace phat {
       std::stringstream sstr(line);
       double x,y;
       sstr >> x >> y;
+#if SWAP_GRADE
+      Grade grade(y,x);
+#else
       Grade grade(x,y);
+#endif
       sstr >> next;
       if(next!=";") {
 	std::cerr << "Semicolon missing" << std::endl;
@@ -391,8 +414,66 @@ namespace phat {
       matrix2.assign_pivots();
     }
     assign_grade_indices(matrix1,matrix2);
+#if SMART_REDUCTION
+    matrix1.pq_row.resize(matrix1.num_grades_y);
+    matrix2.pq_row.resize(matrix2.num_grades_y);
+#endif
 
   }
+
+#if SMART_REDUCTION
+  template<typename GradedMatrix>
+    void min_gens(GradedMatrix& M, GradedMatrix& result) {
+    
+    index count=0;
+
+    for(index x = 0; x < M.num_grades_x;x++) {
+      for(index y = 0; y < M.num_grades_y;y++) {
+	
+	//std::cout << "Min gens " << x << " " << y << std::endl;
+	
+	PQ& pq = M.pq_row[y];
+
+	index end_xy;
+	if(x<M.num_grades_x-1) {
+	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	} else {
+	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	}
+	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
+	  end_xy=M.get_num_cols();
+	}
+	index start_xy = M.start_index_of_pair[std::make_pair(x,y)];
+	//std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
+	assert(start_xy<=end_xy);
+	//std::cout << "Before adding, pq of row has size " << pq.size() << std::endl;
+	for(index i = start_xy;i<end_xy;i++) {
+	  pq.push(i);
+	}
+	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+	while(!pq.empty()) {
+	  index i = pq.top();
+	  // Remove duplicates
+	  while(!pq.empty() && i==pq.top()) {
+	    pq.pop();
+	  }
+	  assert(M.grades[i].first_index<=x);
+	  assert(M.grades[i].second_index==y);
+	  M.reduce_column(i,false,true);
+	  if(!M.is_empty(i) && i>=start_xy&& i<end_xy) {
+	    std::vector<index> col;
+	    M.get_col(i,col);
+	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
+	    result.set_num_cols(count+1);
+	    result.set_col(count++,col);
+	    result.grades.push_back(M.grades[i]);
+	    result.num_rows=M.num_rows;
+	  }
+	}
+      }
+    }
+  }
+#else
 
   template<typename GradedMatrix>
     void min_gens(GradedMatrix& M, GradedMatrix& result) {
@@ -418,7 +499,7 @@ namespace phat {
 	assert(start_xy_of_grade<=end_xy);
 	for(index i = start_xy;i<end_xy;i++) {
 	  M.reduce_column(i);
-	  if(!M.is_empty(i) && i>=start_xy_of_grade) {
+	  if(!M.is_empty(i) && i>=start_xy_of_grade&& i<end_xy) {
 	    std::vector<index> col;
 	    M.get_col(i,col);
 	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
@@ -432,6 +513,10 @@ namespace phat {
     }
   }
 
+#endif
+
+#if SMART_REDUCTION
+
   template<typename GradedMatrix>
     void ker_basis(GradedMatrix& M, GradedMatrix& result) {
     
@@ -441,7 +526,71 @@ namespace phat {
 
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
+
+	PQ& pq = M.pq_row[y];
 	
+	index start_xy = M.start_index_of_pair[std::make_pair(x,y)];
+	index end_xy;
+	if(x<M.num_grades_x-1) {
+	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	} else {
+	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	}
+	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
+	  end_xy=M.get_num_cols();
+	}
+	assert(start_xy<=end_xy);
+
+	for(index i = start_xy;i<end_xy;i++) {
+	  pq.push(i);
+	}
+	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+	while(!pq.empty()) {
+	  index i = pq.top();
+	  // Remove duplicates
+	  while(!pq.empty() && i==pq.top()) {
+	    pq.pop();
+	  }
+	  assert(M.grades[i].first_index<=x);
+	  assert(M.grades[i].second_index==y);
+	  M.reduce_column(i,true,true);
+	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
+	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
+	    std::vector<index> col;
+	    M.slave.get_col(i,col);
+	    result.set_num_cols(count+1);
+	    result.set_col(count++,col);
+	    result.grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	    indices_in_kernel.insert(i);
+	  }
+	}
+      }
+    }
+    result.num_rows=M.get_num_cols();
+    result.slave.set_num_cols(result.get_num_cols());
+    result.assign_pivots();
+    for(index i=0;i<result.get_num_cols();i++) {
+      result.pivots[result.get_max_index(i)]=i;
+      std::vector<index> slave_col;
+      slave_col.push_back(i);
+      result.slave.set_col(i,slave_col);
+    }
+
+  }
+
+
+#else
+
+  template<typename GradedMatrix>
+    void ker_basis(GradedMatrix& M, GradedMatrix& result) {
+    
+    index count=0;
+
+    std::set<index> indices_in_kernel;
+
+    for(index x = 0; x < M.num_grades_x;x++) {
+      for(index y = 0; y < M.num_grades_y;y++) {
+
 	index start_xy = M.start_index_of_pair[std::make_pair(0,y)];
 	index end_xy;
 	if(x<M.num_grades_x-1) {
@@ -456,6 +605,7 @@ namespace phat {
 	index start_xy_of_grade = M.start_index_of_pair[std::make_pair(x,y)];
 	assert(start_xy<=start_xy_of_grade);
 	assert(start_xy_of_grade<=end_xy);
+
 	for(index i = start_xy;i<end_xy;i++) {
 	  M.reduce_column(i,true);
 	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
@@ -481,6 +631,10 @@ namespace phat {
     }
 
   }
+
+
+#endif
+
   template<typename GradedMatrix>
     void reparameterize(GradedMatrix& cols, GradedMatrix& ker, GradedMatrix& result) {
     index ker_cols = ker.get_num_cols();
@@ -659,6 +813,16 @@ namespace phat {
     result.row_grades=res_row_grades;
     for(int i=0;i<cols_to_keep.size();i++) {
       result.set_col(i,new_cols[i]);
+    }
+  }
+  
+  template<typename GradedMatrix>
+    void swap_grades(GradedMatrix& M) {
+    for(index i=0;i<M.get_num_cols();i++) {
+      Grade& gr = M.grades[i];
+      std::swap(gr.first_index,gr.second_index);
+      std::swap(gr.first_val,gr.second_val);
+      
     }
   }
   
