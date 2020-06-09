@@ -70,6 +70,18 @@ namespace phat {
 
     boundary_matrix<Representation> slave;
 
+    void clear() {
+      x_vals.clear();
+      y_vals.clear();
+      start_index_of_pair.clear();
+      grades.clear();
+      row_grades.clear();
+      pivots.clear();
+      for(int i=0;i<this->get_num_cols();i++) {
+	this->clear(i);
+      }
+    }
+
     void print(bool print_row_grades=false,bool print_indices=true) {
       std::cout << "Number of columns: " << this->get_num_cols() << std::endl;
       std::cout << "Number of rows: " << this->num_rows << std::endl;
@@ -101,6 +113,12 @@ namespace phat {
 	}
       }
       
+    }
+
+    bool is_local(index i) {
+      index p = this->get_max_index(i);
+      //std::cout << "Info: " << i << " "<<  p  << std::endl;
+      return p!=-1 && (this->grades[i].first_index == this->row_grades[p].first_index) &&  (this->grades[i].second_index == this->row_grades[p].second_index) ;
     }
 
     void reduce_column(index i, bool use_slave=false, bool notify_pq=false) {
@@ -178,58 +196,63 @@ namespace phat {
 
   // Assumes that columns are already added to matrix in lex order
   template<typename GradedMatrix>
-    void assign_grade_indices(GradedMatrix& M1, GradedMatrix& M2) {
+    void assign_grade_indices(GradedMatrix& M1, GradedMatrix& M2, bool indices_already_assigned=false) {
+    
     int n1=M1.get_num_cols();
     int n2=M2.get_num_cols();
-    //std::cout << "Assgin grade indices with " << n1 << ", " << n2 << " columns" << std::endl;
-    if(n1==0 && n2==0) {
-      return;
-    }
-    
-    std::map<double,index> val_to_index_x, val_to_index_y;
-    
-    std::vector<double> x_vals,y_vals;
-    
-    for(int i=0;i<n1;i++) {
-      x_vals.push_back(M1.grades[i].first_val);
-      y_vals.push_back(M1.grades[i].second_val);
-    }
-    for(int i=0;i<n2;i++) {
-      x_vals.push_back(M2.grades[i].first_val);
-      y_vals.push_back(M2.grades[i].second_val);
-    }
+      
+    if(!indices_already_assigned) {
 
-    std::sort(x_vals.begin(),x_vals.end());
-    auto last_x = std::unique(x_vals.begin(),x_vals.end());
-    x_vals.erase(last_x,x_vals.end());
-    std::sort(y_vals.begin(),y_vals.end());
-    auto last_y = std::unique(y_vals.begin(),y_vals.end());
-    y_vals.erase(last_y,y_vals.end());
-    
-    std::cout << "Found " << x_vals.size() << " different x-values and " << y_vals.size() << " different y-values" << std::endl;
-    M1.x_vals=x_vals;
-    M1.y_vals=y_vals;
-    M1.num_grades_x = x_vals.size();
-    M1.num_grades_y = y_vals.size();
-    M2.x_vals=x_vals;
-    M2.y_vals=y_vals;
-    M2.num_grades_x = x_vals.size();
-    M2.num_grades_y = y_vals.size();
-    
-    for(index i=0;i<x_vals.size();i++) {
-      val_to_index_x[x_vals[i]]=i;
-    }
-    for(index i=0;i<y_vals.size();i++) {
-      val_to_index_y[y_vals[i]]=i;
-    }
-    
-    for(int i=0;i<n1;i++) {
-      M1.grades[i].first_index=val_to_index_x[M1.grades[i].first_val];
-      M1.grades[i].second_index=val_to_index_y[M1.grades[i].second_val];
-    }
-    for(int i=0;i<n2;i++) {
-      M2.grades[i].first_index=val_to_index_x[M2.grades[i].first_val];
-      M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
+      //std::cout << "Assgin grade indices with " << n1 << ", " << n2 << " columns" << std::endl;
+      if(n1==0 && n2==0) {
+	return;
+      }
+      
+      std::map<double,index> val_to_index_x, val_to_index_y;
+      
+      std::vector<double> x_vals,y_vals;
+      
+      for(int i=0;i<n1;i++) {
+	x_vals.push_back(M1.grades[i].first_val);
+	y_vals.push_back(M1.grades[i].second_val);
+      }
+      for(int i=0;i<n2;i++) {
+	x_vals.push_back(M2.grades[i].first_val);
+	y_vals.push_back(M2.grades[i].second_val);
+      }
+      
+      std::sort(x_vals.begin(),x_vals.end());
+      auto last_x = std::unique(x_vals.begin(),x_vals.end());
+      x_vals.erase(last_x,x_vals.end());
+      std::sort(y_vals.begin(),y_vals.end());
+      auto last_y = std::unique(y_vals.begin(),y_vals.end());
+      y_vals.erase(last_y,y_vals.end());
+      
+      std::cout << "Found " << x_vals.size() << " different x-values and " << y_vals.size() << " different y-values" << std::endl;
+      M1.x_vals=x_vals;
+      M1.y_vals=y_vals;
+      M1.num_grades_x = x_vals.size();
+      M1.num_grades_y = y_vals.size();
+      M2.x_vals=x_vals;
+      M2.y_vals=y_vals;
+      M2.num_grades_x = x_vals.size();
+      M2.num_grades_y = y_vals.size();
+      
+      for(index i=0;i<x_vals.size();i++) {
+	val_to_index_x[x_vals[i]]=i;
+      }
+      for(index i=0;i<y_vals.size();i++) {
+	val_to_index_y[y_vals[i]]=i;
+      }
+      
+      for(int i=0;i<n1;i++) {
+	M1.grades[i].first_index=val_to_index_x[M1.grades[i].first_val];
+	M1.grades[i].second_index=val_to_index_y[M1.grades[i].second_val];
+      }
+      for(int i=0;i<n2;i++) {
+	M2.grades[i].first_index=val_to_index_x[M2.grades[i].first_val];
+	M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
+      }
     }
     
     index run_x=0;
@@ -413,13 +436,144 @@ namespace phat {
       matrix2.num_rows=r;
       matrix2.assign_pivots();
     }
+
     assign_grade_indices(matrix1,matrix2);
+    for(index i=0;i<matrix1.num_rows;i++) {
+      matrix1.row_grades.push_back(matrix2.grades[i]);
+    }
 #if SMART_REDUCTION
     matrix1.pq_row.resize(matrix1.num_grades_y);
     matrix2.pq_row.resize(matrix2.num_grades_y);
 #endif
 
   }
+
+  template<typename GradedMatrix>
+    void chunk_preprocessing(GradedMatrix& M1, GradedMatrix& M2,
+			     GradedMatrix& result1, GradedMatrix& result2) {
+
+    std::vector<int> local_pivots;
+    for(index i=0;i<M1.num_rows;i++) {
+      local_pivots.push_back(-1);
+    }
+    std::cout << "Local reduction" << std::endl;
+    for(index i=0;i<M1.get_num_cols();i++) {
+      while(M1.is_local(i)) {
+	index p = M1.get_max_index(i);
+	index j = local_pivots[p];
+	if(j!=-1) {
+	  M1.add_to(j,i);
+	} else {
+	  local_pivots[p]=i;
+	  break;
+	}
+      }
+    }
+    std::cout << "Sparsification" << std::endl;
+    for(index i=0;i<M1.get_num_cols();i++) {
+      if(M1.is_empty(i) || M1.is_local(i)) {
+	continue;
+      }
+      std::vector<index> col;
+      //std::cout << "i=" << i << std::endl;
+      while(!M1.is_empty(i)) {
+	index p = M1.get_max_index(i);
+
+	index j = local_pivots[p];
+	//std::cout << "Pivot=" << p << " " << j << std::endl;
+	assert(j==-1 || M1.get_max_index(j)==p);
+	if(j!=-1) {
+	  M1.add_to(j,i);
+	} else {
+	  col.push_back(p);
+	  M1.remove_max(i);
+	}
+      }
+      std::sort(col.begin(),col.end());
+      M1.set_col(i,col);
+    }
+
+    std::cout << "Build up smaller matrices" << std::endl;
+    
+    std::vector<int> new_row_index;
+    new_row_index.resize(M1.num_rows);
+    index row_count=0;
+    for(index i=0;i<M1.num_rows;i++) {
+      if(local_pivots[i]==-1) {
+	new_row_index[i]=row_count++;
+      } else {
+	new_row_index[i]=-1;
+      }
+    }
+    std::vector<int> new_col_index;
+    new_col_index.resize(M1.get_num_cols());
+    index col_count=0;
+    for(index i=0;i<M1.get_num_cols();i++) {
+      if(M1.is_empty(i) || M1.is_local(i)) {
+	new_col_index[i]=-1;
+      } else {
+	new_col_index[i]=col_count++;
+      }
+    }
+    
+    result1.set_num_cols(col_count);
+    for(index i=0;i<M1.get_num_cols();i++) {
+      if(new_col_index[i]!=-1) {
+	result1.grades.push_back(M1.grades[i]);
+	std::vector<index> col,new_col;
+	M1.get_col(i,col);
+	for(index j=0;j<col.size();j++) {
+	  col[j]=new_row_index[col[j]];
+	}
+	result1.set_col(new_col_index[i],col);
+      }
+    }
+    
+    result1.num_rows=row_count;
+    result2.set_num_cols(row_count);
+    for(index i=0;i<M1.num_rows;i++) {
+      if(local_pivots[i]==-1) {
+	result1.row_grades.push_back(M1.row_grades[i]);
+	result2.grades.push_back(M1.row_grades[i]);
+	std::vector<index> col;
+	M2.get_col(i,col);
+	result2.set_col(new_row_index[i],col);
+      } 
+    }
+    result2.num_rows=M2.num_rows;
+    
+    result1.assign_slave_matrix();
+    result1.assign_pivots();   
+    result2.assign_slave_matrix();
+    result2.assign_pivots();   
+#if 0
+    assign_grade_indices(result1,result2);
+#else
+    result1.num_grades_x=M1.num_grades_x;
+    result1.num_grades_y=M1.num_grades_y;
+    std::copy(M1.x_vals.begin(),M1.x_vals.end(),std::back_inserter(result1.x_vals));
+    std::copy(M1.y_vals.begin(),M1.y_vals.end(),std::back_inserter(result1.y_vals));
+    
+
+    result2.num_grades_x=M2.num_grades_x;
+    result2.num_grades_y=M2.num_grades_y;
+    std::copy(M2.x_vals.begin(),M2.x_vals.end(),std::back_inserter(result2.x_vals));
+    std::copy(M2.y_vals.begin(),M2.y_vals.end(),std::back_inserter(result2.y_vals));
+
+    assign_grade_indices(result1,result2,true);
+#endif
+
+#if SMART_REDUCTION
+    result1.pq_row.resize(result1.num_grades_y);
+    result2.pq_row.resize(result2.num_grades_y);
+#endif    
+
+    //result1.print(true,true);
+    //result2.print(false,true);
+
+  }
+
+
 
 #if SMART_REDUCTION
   template<typename GradedMatrix>
@@ -453,6 +607,7 @@ namespace phat {
 	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
 	while(!pq.empty()) {
 	  index i = pq.top();
+	  //std::cout << "Index " << i << std::endl;
 	  // Remove duplicates
 	  while(!pq.empty() && i==pq.top()) {
 	    pq.pop();
@@ -545,6 +700,7 @@ namespace phat {
 	  pq.push(i);
 	}
 	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+	test_timer2.resume();
 	while(!pq.empty()) {
 	  index i = pq.top();
 	  // Remove duplicates
@@ -556,16 +712,20 @@ namespace phat {
 	  M.reduce_column(i,true,true);
 	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
 	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
-	    std::vector<index> col;
-	    M.slave.get_col(i,col);
-	    result.set_num_cols(count+1);
-	    result.set_col(count++,col);
-	    result.grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	    indices_in_kernel.insert(i);
+	    {
+	      std::vector<index> col;
+	      M.slave.get_col(i,col);
+	      result.set_num_cols(count+1);
+	      result.set_col(count++,col);
+	      result.grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	      indices_in_kernel.insert(i);
+	    }
 	  }
 	}
+	test_timer2.stop();	
       }
     }
+    test_timer1.start();
     result.num_rows=M.get_num_cols();
     result.slave.set_num_cols(result.get_num_cols());
     result.assign_pivots();
@@ -575,6 +735,7 @@ namespace phat {
       slave_col.push_back(i);
       result.slave.set_col(i,slave_col);
     }
+    test_timer1.stop();
 
   }
 
@@ -605,6 +766,8 @@ namespace phat {
 	index start_xy_of_grade = M.start_index_of_pair[std::make_pair(x,y)];
 	assert(start_xy<=start_xy_of_grade);
 	assert(start_xy_of_grade<=end_xy);
+	
+	
 
 	for(index i = start_xy;i<end_xy;i++) {
 	  M.reduce_column(i,true);
@@ -618,6 +781,7 @@ namespace phat {
 	    indices_in_kernel.insert(i);
 	  }
 	}
+
       }
     }
     result.num_rows=M.get_num_cols();
@@ -825,5 +989,119 @@ namespace phat {
       
     }
   }
+
+  struct grade_colex_sort {
+
+    template<typename T>
+    bool operator()(T& t1, T& t2) {
+      if(t1.first.second_index<t2.first.second_index) {
+	return true;
+      }
+      if(t1.first.second_index>t2.first.second_index) {
+	return false;
+      }
+      if(t1.first.first_index < t2.first.first_index) {
+	return true;
+      }
+      if(t1.first.first_index > t2.first.first_index) {
+	return false;
+      }
+      // flip the stable sort
+      return t1.second < t2.second;
+    }
+
+  };
+
+  template<typename GradedMatrix>
+    void convert_to_colex_order(GradedMatrix& M) {
+    
+    std::vector<std::pair<Grade,index> > row_info;
+
+    for(index i=0;i<M.num_rows;i++) {
+      row_info.push_back(std::make_pair(M.row_grades[i],i));
+    }
+    std::sort(row_info.begin(),row_info.end(),grade_colex_sort());
+    
+    std::map<index,index> re_index_rows;
+
+    for(index i=0;i<row_info.size();i++) {
+      re_index_rows[row_info[i].second]=i;
+    }
+
+    for(index i=0;i<M.num_rows;i++) {
+      M.row_grades[i]=row_info[i].first;
+    }
+    for(index i=0;i<M.get_num_cols();i++) {
+      std::vector<index> col;
+      M.get_col(i,col);
+      for(index j=0;j<col.size();j++) {
+	col[j]=re_index_rows[col[j]];
+      }
+      std::sort(col.begin(),col.end());
+      M.set_col(i,col);
+    }
+
+    // Now columns
+    std::vector<std::pair<Grade,index> > column_info;
+    for(index i=0;i<M.get_num_cols();i++) {
+      column_info.push_back(std::make_pair(M.grades[i],i));
+    }
+    std::sort(column_info.begin(),column_info.end(),grade_colex_sort());
+
+    std::vector<std::vector<index>> cols;
+    cols.resize(M.get_num_cols());
+
+    for(index i=0;i<M.get_num_cols();i++) {
+      M.grades[i]=column_info[i].first;
+      M.get_col(column_info[i].second,cols[i]);
+    }
+    for(index i=0;i<M.get_num_cols();i++) {
+      M.set_col(i,cols[i]);
+    }
+  }
+
+  template<typename GradedMatrix,typename ofstr>
+    void print_in_rivet_format(GradedMatrix& M,ofstr& out) {
+
+    convert_to_colex_order(M);
+
+    /*
+    out << "x-grades" << std::endl;
+    for(index i=0;i<M.num_grades_x;i++) {
+      out << M.x_vals[i] << std::endl;
+    }
+    out << std::endl;
+    out << "y-grades" << std::endl;
+    for(int i=0;i<M.num_grades_x;i++) {
+      out << M.y_vals[i] << std::endl;
+    }
+    out << std::endl;
+    */
+    out << "MINIMAL PRESENTATION:" << std::endl;
+    out << "Number of rows:" << M.num_rows << std::endl;
+    out << "Row bigrades:" << std::endl;
+    out << "| ";
+    for(index i=0;i<M.num_rows;i++) {
+      out<<"("<<M.row_grades[i].first_index<<","<<M.row_grades[i].second_index<<") ";
+    }
+    out << "|" << std::endl;
+    out << "Number of columns:" << M.get_num_cols() << std::endl;
+    out << "Column bigrades:" << std::endl;
+    out << "| ";
+    for(index i=0;i<M.get_num_cols();i++) {
+      out<<"("<<M.grades[i].first_index<<","<<M.grades[i].second_index<<") ";
+    }
+    out << "|" << std::endl;
+    for(index i=0;i<M.get_num_cols();i++) {
+      std::vector<index> col;
+      M.get_col(i,col);
+      for(index j=0;j<col.size();j++) {
+	out << col[j] << " ";
+      }
+      out << std::endl;
+    }
+  }
+
+
   
 }//of namespace phat
