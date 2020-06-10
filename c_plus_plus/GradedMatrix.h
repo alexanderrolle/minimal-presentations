@@ -568,6 +568,8 @@ namespace phat {
     result2.pq_row.resize(result2.num_grades_y);
 #endif    
 
+    std::cout << "After chunk reduction, matrix has " << result1.get_num_cols() << " columns and " << result1.num_rows << " rows" << std::endl;
+
     //result1.print(true,true);
     //result2.print(false,true);
 
@@ -580,6 +582,9 @@ namespace phat {
     void min_gens(GradedMatrix& M, GradedMatrix& result) {
     
     index count=0;
+
+    std::vector<Grade> new_grades;
+    std::vector<std::vector<index>> new_cols;
 
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
@@ -619,21 +624,26 @@ namespace phat {
 	    std::vector<index> col;
 	    M.get_col(i,col);
 	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
-	    result.set_num_cols(count+1);
-	    result.set_col(count++,col);
-	    result.grades.push_back(M.grades[i]);
-	    result.num_rows=M.num_rows;
+	    new_grades.push_back(M.grades[i]);
+	    new_cols.push_back(col);
 	  }
 	}
       }
     }
+    result.set_num_cols(new_cols.size());
+    for(index i=0;i<new_cols.size();i++) {
+      result.grades.push_back(new_grades[i]);
+      result.set_col(i,new_cols[i]);
+    }
+    result.num_rows=M.num_rows;
   }
 #else
 
   template<typename GradedMatrix>
     void min_gens(GradedMatrix& M, GradedMatrix& result) {
     
-    index count=0;
+    std::vector<Grade> new_grades;
+    std::vector<std::vector<index>> new_cols;
 
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
@@ -658,14 +668,18 @@ namespace phat {
 	    std::vector<index> col;
 	    M.get_col(i,col);
 	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
-	    result.set_num_cols(count+1);
-	    result.set_col(count++,col);
-	    result.grades.push_back(M.grades[i]);
-	    result.num_rows=M.num_rows;
+	    new_grades.push_back(M.grades[i]);
+	    new_cols.push_back(col);
 	  }
 	}
       }
     }
+    result.set_num_cols(new_cols.size());
+    for(index i=0;i<new_cols.size();i++) {
+      result.grades.push_back(new_grades[i]);
+      result.set_col(i,new_cols[i]);
+    }
+    result.num_rows=M.num_rows; 
   }
 
 #endif
@@ -675,8 +689,9 @@ namespace phat {
   template<typename GradedMatrix>
     void ker_basis(GradedMatrix& M, GradedMatrix& result) {
     
-    index count=0;
-
+    std::vector<Grade> new_grades;
+    std::vector<std::vector<index>> new_cols;
+    
     std::set<index> indices_in_kernel;
 
     for(index x = 0; x < M.num_grades_x;x++) {
@@ -700,7 +715,6 @@ namespace phat {
 	  pq.push(i);
 	}
 	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
-	test_timer2.resume();
 	while(!pq.empty()) {
 	  index i = pq.top();
 	  // Remove duplicates
@@ -715,17 +729,19 @@ namespace phat {
 	    {
 	      std::vector<index> col;
 	      M.slave.get_col(i,col);
-	      result.set_num_cols(count+1);
-	      result.set_col(count++,col);
-	      result.grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	      new_cols.push_back(col);
+	      new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
 	      indices_in_kernel.insert(i);
 	    }
 	  }
 	}
-	test_timer2.stop();	
       }
     }
-    test_timer1.start();
+    result.set_num_cols(new_cols.size());
+    for(index i=0;i<new_cols.size();i++) {
+      result.grades.push_back(new_grades[i]);
+      result.set_col(i,new_cols[i]);
+    }
     result.num_rows=M.get_num_cols();
     result.slave.set_num_cols(result.get_num_cols());
     result.assign_pivots();
@@ -735,7 +751,6 @@ namespace phat {
       slave_col.push_back(i);
       result.slave.set_col(i,slave_col);
     }
-    test_timer1.stop();
 
   }
 
@@ -744,8 +759,9 @@ namespace phat {
 
   template<typename GradedMatrix>
     void ker_basis(GradedMatrix& M, GradedMatrix& result) {
-    
-    index count=0;
+
+    std::vector<Grade> new_grades;
+    std::vector<std::vector<index>> new_cols;
 
     std::set<index> indices_in_kernel;
 
@@ -775,14 +791,18 @@ namespace phat {
 	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
 	    std::vector<index> col;
 	    M.slave.get_col(i,col);
-	    result.set_num_cols(count+1);
-	    result.set_col(count++,col);
-	    result.grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	    new_cols.push_back(col);
+	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
 	    indices_in_kernel.insert(i);
 	  }
 	}
 
       }
+    }
+    result.set_num_cols(new_cols.size());
+    for(index i=0;i<new_cols.size();i++) {
+      result.grades.push_back(new_grades[i]);
+      result.set_col(i,new_cols[i]);
     }
     result.num_rows=M.get_num_cols();
     result.slave.set_num_cols(result.get_num_cols());
@@ -817,7 +837,6 @@ namespace phat {
     }
     */
 
-
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
       std::vector<index> col;
@@ -831,6 +850,7 @@ namespace phat {
       ker.slave.get_col(ker_cols+i,new_col);
       result.set_col(i,new_col);
       result.grades.push_back(cols.grades[i]);
+      
     }
     // Assign row grades
     result.num_rows=ker_cols;

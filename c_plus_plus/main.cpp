@@ -70,7 +70,7 @@ void print_timers() {
 
 #include "GradedMatrix.h"
 
-typedef phat::GradedMatrix<phat::vector_list> GrMat;
+typedef phat::GradedMatrix<phat::vector_vector> GrMat;
 
 
 int main(int argc, char** argv) {
