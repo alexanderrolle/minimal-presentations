@@ -11,11 +11,19 @@
 #endif
 
 #ifndef CLEARING
-#define CLEARING 1
+#define CLEARING 0
 #endif
 
 #ifndef PARALLELIZATION
 #define PARALLELIZATION 1
+#endif
+
+#ifndef MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+#define MIN_GENS_AND_KER_BASIS_IN_PARALLEL 1
+#endif
+
+#if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+#error CLEARING and  MIN_GENS_AND_KER_BASIS_IN_PARALLEL cannot both be enabled
 #endif
 
 #define TIMERS 1
@@ -31,7 +39,7 @@
 
 boost::timer::cpu_timer overall_timer, chunk_timer,firep_timer, mingens_timer, kerbasis_timer, 
   reparam_timer,minimize_timer,
-  test_timer1, test_timer2, test_timer3, test_timer4;
+  test_timer1, test_timer2, test_timer3, test_timer4,test_timer5;
 
 void initialize_timers() {
   overall_timer.start();
@@ -57,6 +65,8 @@ void initialize_timers() {
   test_timer3.stop();
   test_timer4.start();
   test_timer4.stop();
+  test_timer5.start();
+  test_timer5.stop();
 }
 
 void print_timers() {
@@ -71,6 +81,7 @@ void print_timers() {
   std::cout << "Test timer2: " << double(test_timer2.elapsed().wall)/std::pow(10,9) << std::endl;
   std::cout << "Test timer3: " << double(test_timer3.elapsed().wall)/std::pow(10,9) << std::endl;
   std::cout << "Test timer4: " << double(test_timer4.elapsed().wall)/std::pow(10,9) << std::endl;
+  std::cout << "Test timer5: " << double(test_timer5.elapsed().wall)/std::pow(10,9) << std::endl;
 }
 
 #endif
@@ -97,15 +108,21 @@ int main(int argc, char** argv) {
   std::cout << "Execution parralized, max Number of threads: " << omp_get_max_threads() << std::endl;
 #endif
 
+#if MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+  if(omp_get_max_threads()<2) {
+    std::cerr << "Option MIN_GENS_AND_KER_BASIS_IN_PARALLEL not possible with one thread" << std::endl;
+    std::exit(1);
+  }
+#endif
 
-  std::ifstream ifstr(argv[1]);
+
 
   GrMat preGM1,preGM2;
 
 #if TIMERS
   firep_timer.start();
 #endif
-  create_matrix_from_firep(ifstr,preGM1,preGM2);
+  create_matrix_from_firep(argv[1],preGM1,preGM2);
 
 #if TIMERS
   firep_timer.stop();
@@ -139,40 +156,61 @@ int main(int argc, char** argv) {
   GrMat& GM2=preGM2;
 #endif
 
-  GrMat MG;
 
+
+
+  GrMat MG,Ker;
+
+#if MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+  std::cout << "Min Gens and ker_basis in parallel..." << std::flush;
+  kerbasis_timer.start();
+#pragma omp parallel num_threads(2)
+  {
+    
+    int tid = omp_get_thread_num();
+    if(tid==0) {
+#endif
+
+#if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
 #if TIMERS
   mingens_timer.start();
 #endif
   std::cout << "Min Gens..." << std::flush;
-  test_timer1.start();
+#endif
   min_gens(GM1,MG);
-  test_timer1.stop();
+#if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done" << std::endl;
-
 #if TIMERS
   mingens_timer.stop();
 #endif
+#endif
 
-  
-  //MG.print();
+#if MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+    }
+    if(tid==1) {
+#endif
 
-  
-  GrMat Ker;
-
+#if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
 #if TIMERS
   kerbasis_timer.start();
 #endif
+
   std::cout << "Ker basis..." << std::flush;
-  test_timer2.start();
+#endif
   ker_basis(GM2,Ker,MG);
-  test_timer2.stop();
+#if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done" << std::endl;
 #if TIMERS
   kerbasis_timer.stop();
 #endif
+#endif
 
-  //Ker.print(false);
+#if MIN_GENS_AND_KER_BASIS_IN_PARALLEL
+    }
+  }
+  kerbasis_timer.stop();
+  std::cout << "done" << std::endl;
+#endif
 
   GrMat semi_min_rep;
 

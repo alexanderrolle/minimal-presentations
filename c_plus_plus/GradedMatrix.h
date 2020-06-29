@@ -365,16 +365,15 @@ namespace phat {
     }
 
   }
-  
-  template<typename Instream, typename Matrix>
-    void create_matrix_from_firep(Instream& instr, 
-				  Matrix& matrix1, 
-				  Matrix& matrix2) {
+
+  void load_file_into_prematrix_cpp(char* filename,
+				    std::vector<pre_column>& pre_matrix1,
+				    std::vector<pre_column>& pre_matrix2,
+				    int& r) {
+
+     std::ifstream instr(filename);
     
-
-    std::vector<pre_column> pre_matrix1, pre_matrix2;
-
-    std::string next;
+     std::string next;
     std::getline(instr,next);
     if(next!="firep") {
       std::cerr << "Keyword 'firep' expected" << std::endl;
@@ -387,7 +386,7 @@ namespace phat {
     std::getline(instr,line);
     //std::cout << line << std::endl;
 
-    int t,s,r;
+    int t,s;
 
     {
       std::getline(instr,line);
@@ -396,7 +395,8 @@ namespace phat {
     }
 
     std::cout << "t,s,r=" << t << " " << s << " " << r << std::endl;
-    
+
+    test_timer1.start();
     for(int i=0;i<t;i++) {
       std::getline(instr,line);
       std::stringstream sstr(line);
@@ -443,6 +443,23 @@ namespace phat {
       }
       pre_matrix2.push_back(pre_column(i,grade,indices));
     }
+    test_timer1.stop();
+     
+    
+  }
+  
+  template<typename Matrix>
+    void create_matrix_from_firep(char* filename, 
+				  Matrix& matrix1, 
+				  Matrix& matrix2) {
+
+   
+    std::vector<pre_column> pre_matrix1, pre_matrix2;
+    int r;
+
+    load_file_into_prematrix_cpp(filename,pre_matrix1,pre_matrix2,r);
+    
+    test_timer2.start();
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
     std::sort(pre_matrix2.begin(),pre_matrix2.end(),sort_pre_column);
@@ -460,6 +477,8 @@ namespace phat {
       std::sort(pre_matrix1[i].boundary.begin(),
 		pre_matrix1[i].boundary.end());
     }
+    test_timer2.stop();
+    test_timer3.start();
     {
       int n = pre_matrix1.size();
       matrix1.set_num_cols(n);
@@ -470,7 +489,7 @@ namespace phat {
 	matrix1.set_col(i,pcol.boundary);
       }
       matrix1.assign_slave_matrix();
-      matrix1.num_rows=s;
+      matrix1.num_rows=pre_matrix2.size();
       matrix1.assign_pivots();
     }
     {
@@ -486,6 +505,9 @@ namespace phat {
       matrix2.num_rows=r;
       matrix2.assign_pivots();
     }
+    test_timer3.stop();
+
+    test_timer4.start();
     assign_grade_indices(matrix1,matrix2);
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
@@ -494,6 +516,7 @@ namespace phat {
     matrix1.pq_row.resize(matrix1.num_grades_y);
     matrix2.pq_row.resize(matrix2.num_grades_y);
 #endif
+    test_timer4.stop();
 
   }
 
