@@ -60,8 +60,8 @@ namespace phat {
     index num_rows;
     
     //std::unordered_map<index_pair,index,boost::hash<index_pair> > start_index_of_pair;
-    std::map<index_pair,index> start_index_of_pair;
-    //std::vector<std::vector<index> start_index_of_pair;
+    //std::map<index_pair,index> start_index_of_pair;
+    std::vector<std::vector<index>> start_index_of_pair;
     
     std::vector<Grade> grades;
 
@@ -236,7 +236,6 @@ namespace phat {
     
     int n1=M1.get_num_cols();
     int n2=M2.get_num_cols();
-      
     if(!indices_already_assigned) {
 
       //std::cout << "Assgin grade indices with " << n1 << ", " << n2 << " columns" << std::endl;
@@ -290,8 +289,7 @@ namespace phat {
 	M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
       }
     }
-
-    test_timer1.resume();
+    
     std::cout << "Num grades x " << M1.num_grades_x << std::endl;
     std::cout << "Num grades y " << M1.num_grades_y << std::endl;
     
@@ -302,6 +300,15 @@ namespace phat {
     index run_y=0;
     
     index curr_x,curr_y;
+
+    M1.start_index_of_pair.resize(M1.num_grades_x);
+    for(int i=0;i<M1.num_grades_x;i++) {
+      M1.start_index_of_pair[i].resize(M1.num_grades_y);
+    }
+    M2.start_index_of_pair.resize(M2.num_grades_x);
+    for(int i=0;i<M2.num_grades_x;i++) {
+      M2.start_index_of_pair[i].resize(M2.num_grades_y);
+    }
 
     for(int i=0;i<=n1;i++) {
       
@@ -319,7 +326,7 @@ namespace phat {
       while(run_y<curr_y || (run_y==curr_y && run_x <= curr_x)) {
 	//std::cout << "M1: Set index of " << run_x << " " << run_y << " to " << i << std::endl;
 	//std::cout << "Curr: " << curr_x << " " << curr_y << std::endl;
-	M1.start_index_of_pair[std::make_pair(run_x,run_y)]=i;
+	M1.start_index_of_pair[run_x][run_y]=i;
 	run_x++;
 	if(run_x==M1.num_grades_x) {
 	  run_y++;
@@ -329,8 +336,6 @@ namespace phat {
     }
 
 
-    test_timer1.stop();
-    test_timer2.resume();
     run_x=run_y=0;
 
     for(int i=0;i<=n2;i++) {
@@ -350,7 +355,7 @@ namespace phat {
       
       while(run_y<curr_y || (run_y==curr_y && run_x <= curr_x)) {
 	//std::cout << "M2: Set index of " << run_x << " " << run_y << " to " << i << std::endl;
-	M2.start_index_of_pair[std::make_pair(run_x,run_y)]=i;
+	M2.start_index_of_pair[run_x][run_y]=i;
 	run_x++;
 	if(run_x==M2.num_grades_x) {
 	  run_y++;
@@ -358,7 +363,7 @@ namespace phat {
 	}
       }
     }
-    test_timer2.stop();
+
   }
   
   template<typename Instream, typename Matrix>
@@ -516,7 +521,10 @@ namespace phat {
     }
     //test_timer1.stop();
     std::cout << "Sparsification" << std::endl;
-    //test_timer1.start();
+    //test_timer2.start();
+#if PARALLELIZATION
+#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#endif
     for(index i=0;i<M1.get_num_cols();i++) {
       if(M1.is_empty(i) || M1.is_local(i)) {
 	continue;
@@ -539,9 +547,9 @@ namespace phat {
       std::sort(col.begin(),col.end());
       M1.set_col(i,col);
     }
-    //test_timer1.stop();
+    //test_timer2.stop();
     std::cout << "Build up smaller matrices" << std::endl;
-    //test_timer2.start();
+    //test_timer3.start();
     std::vector<int> new_row_index;
     new_row_index.resize(M1.num_rows);
     index row_count=0;
@@ -562,8 +570,8 @@ namespace phat {
 	new_col_index[i]=col_count++;
       }
     }
-    //test_timer2.stop();
-    test_timer3.start();
+    //test_timer3.stop();
+    //test_timer4.start();
     result1.set_num_cols(col_count);
     for(index i=0;i<M1.get_num_cols();i++) {
       if(new_col_index[i]!=-1) {
@@ -594,7 +602,7 @@ namespace phat {
     result1.assign_pivots();   
     result2.assign_slave_matrix();
     result2.assign_pivots();   
-    test_timer3.stop();
+
 
 #if 0
     assign_grade_indices(result1,result2);
@@ -610,9 +618,8 @@ namespace phat {
     std::copy(M2.x_vals.begin(),M2.x_vals.end(),std::back_inserter(result2.x_vals));
     std::copy(M2.y_vals.begin(),M2.y_vals.end(),std::back_inserter(result2.y_vals));
 
-    test_timer4.start();
+
     assign_grade_indices(result1,result2,true);
-    test_timer4.stop();
 
 #endif
 
@@ -623,6 +630,7 @@ namespace phat {
 
     std::cout << "After chunk reduction, matrix has " << result1.get_num_cols() << " columns and " << result1.num_rows << " rows" << std::endl;
 
+    //test_timer4.stop();
 
     //result1.print(true,true);
     //result2.print(false,true);
@@ -649,14 +657,14 @@ namespace phat {
 
 	index end_xy;
 	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	  end_xy = M.start_index_of_pair[x+1][y];
 	} else {
-	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	  end_xy = M.start_index_of_pair[0][y+1];
 	}
 	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
 	  end_xy=M.get_num_cols();
 	}
-	index start_xy = M.start_index_of_pair[std::make_pair(x,y)];
+	index start_xy = M.start_index_of_pair[x][y];
 	//std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
 	assert(start_xy<=end_xy);
 	//std::cout << "Before adding, pq of row has size " << pq.size() << std::endl;
@@ -726,17 +734,17 @@ namespace phat {
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
 	
-	index start_xy = M.start_index_of_pair[std::make_pair(0,y)];
+	index start_xy = M.start_index_of_pair[0][y];
 	index end_xy;
 	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	  end_xy = M.start_index_of_pair[x+1][y];
 	} else {
-	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	  end_xy = M.start_index_of_pair[0][y+1];
 	}
 	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
 	  end_xy=M.get_num_cols();
 	}
-	index start_xy_of_grade = M.start_index_of_pair[std::make_pair(x,y)];
+	index start_xy_of_grade = M.start_index_of_pair[x][y];
 	//std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " (" << start_xy_of_grade << ") " << end_xy << std::endl;
 	assert(start_xy<=start_xy_of_grade);
 	assert(start_xy_of_grade<=end_xy);
@@ -779,12 +787,12 @@ namespace phat {
 
 	PQ& pq = M.pq_row[y];
 	
-	index start_xy = M.start_index_of_pair[std::make_pair(x,y)];
+	index start_xy = M.start_index_of_pair[x][y];
 	index end_xy;
 	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	  end_xy = M.start_index_of_pair[x+1][y];
 	} else {
-	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	  end_xy = M.start_index_of_pair[0][y+1];
 	}
 	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
 	  end_xy=M.get_num_cols();
@@ -859,18 +867,18 @@ namespace phat {
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
 
-	index start_xy = M.start_index_of_pair[std::make_pair(0,y)];
+	index start_xy = M.start_index_of_pair[0][y];
 	index end_xy;
 	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[std::make_pair(x+1,y)];
+	  end_xy = M.start_index_of_pair[x+1][y];
 	} else {
-	  end_xy = M.start_index_of_pair[std::make_pair(0,y+1)];
+	  end_xy = M.start_index_of_pair[0][y+1];
 	}
 	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
 	  end_xy=M.get_num_cols();
 	}
 	//std::cout << "Ker basis for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
-	index start_xy_of_grade = M.start_index_of_pair[std::make_pair(x,y)];
+	index start_xy_of_grade = M.start_index_of_pair[x][y];
 	assert(start_xy<=start_xy_of_grade);
 	assert(start_xy_of_grade<=end_xy);
 	
@@ -932,7 +940,9 @@ namespace phat {
     std::copy(cols.grades.begin(),cols.grades.end(),std::back_inserter(result.grades));
 
     //test_timer4.start();
-#pragma omp parallel for schedule(dynamic,1)
+#if PARALLELIZATION
+#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#endif
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
       std::vector<index> col;
@@ -1039,7 +1049,9 @@ namespace phat {
 #if LAZY_MINIMIZATION
     //std::cout << "HERE I AM " << std::endl;
     //test_timer2.start();
-#pragma omp parallel for schedule(dynamic,1)
+#if PARALLELIZATION
+#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#endif
     for(index k=0;k<cols_to_keep.size();k++) {
       Column& col=new_cols[k];
       index i = cols_to_keep[k];

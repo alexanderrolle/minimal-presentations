@@ -11,7 +11,11 @@
 #endif
 
 #ifndef CLEARING
-#define CLEARING 0
+#define CLEARING 1
+#endif
+
+#ifndef PARALLELIZATION
+#define PARALLELIZATION 1
 #endif
 
 #define TIMERS 1
@@ -89,26 +93,24 @@ int main(int argc, char** argv) {
   overall_timer.start();
 #endif
 
+#if PARALLELIZATION
+  std::cout << "Execution parralized, max Number of threads: " << omp_get_max_threads() << std::endl;
+#endif
+
+
   std::ifstream ifstr(argv[1]);
 
-  GrMat* preGM1 = new GrMat();
-  GrMat* preGM2 = new GrMat();
+  GrMat preGM1,preGM2;
 
 #if TIMERS
   firep_timer.start();
 #endif
-  create_matrix_from_firep(ifstr,*preGM1,*preGM2);
+  create_matrix_from_firep(ifstr,preGM1,preGM2);
 
 #if TIMERS
   firep_timer.stop();
 #endif
 
-  /*
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
-  std::cout << "Max Number of threads: " << omp_get_max_threads() << std::endl;
-  omp_set_num_threads(omp_get_max_threads());
-  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
-  */
 
 
 #if CHUNK_PREPROCESSING
@@ -118,12 +120,12 @@ int main(int argc, char** argv) {
 #endif
 
   std::cout << "Chunk preprocessing..." << std::flush;
-  GrMat *GM1=new GrMat();
-  GrMat *GM2=new GrMat();
-  chunk_preprocessing(*preGM1,*preGM2,*GM1,*GM2);
+  GrMat GM1;
+  GrMat GM2;
+  //test_timer1.start();
+  chunk_preprocessing(preGM1,preGM2,GM1,GM2);
+  //test_timer1.stop();
   std::cout << "done" << std::endl;
-  delete preGM1;
-  delete preGM2;
 
 #if TIMERS
   chunk_timer.stop();
@@ -133,20 +135,20 @@ int main(int argc, char** argv) {
   //GM2.print();
 
 #else
-  GrMat* GM1=preGM1;
-  GrMat* GM2=preGM2;
+  GrMat& GM1=preGM1;
+  GrMat& GM2=preGM2;
 #endif
 
-  GrMat* MG = new GrMat();
+  GrMat MG;
 
 #if TIMERS
   mingens_timer.start();
 #endif
   std::cout << "Min Gens..." << std::flush;
-  min_gens(*GM1,*MG);
+  test_timer1.start();
+  min_gens(GM1,MG);
+  test_timer1.stop();
   std::cout << "done" << std::endl;
-
-  delete GM1;
 
 #if TIMERS
   mingens_timer.stop();
@@ -156,61 +158,57 @@ int main(int argc, char** argv) {
   //MG.print();
 
   
-  GrMat* Ker = new GrMat();
+  GrMat Ker;
 
 #if TIMERS
   kerbasis_timer.start();
 #endif
   std::cout << "Ker basis..." << std::flush;
-  ker_basis(*GM2,*Ker,*MG);
-   std::cout << "done" << std::endl;
-   delete GM2;
+  test_timer2.start();
+  ker_basis(GM2,Ker,MG);
+  test_timer2.stop();
+  std::cout << "done" << std::endl;
 #if TIMERS
   kerbasis_timer.stop();
 #endif
 
   //Ker.print(false);
 
-  GrMat* semi_min_rep = new GrMat();
+  GrMat semi_min_rep;
 
 #if TIMERS
   reparam_timer.start();
 #endif
   std::cout << "Reparameterize..." << std::flush;
-  reparameterize(*MG,*Ker,*semi_min_rep);
+  reparameterize(MG,Ker,semi_min_rep);
   std::cout << "done" << std::endl;
-  delete MG;
-  delete Ker;
 #if TIMERS
   reparam_timer.stop();
 #endif
 
   //semi_min_rep.print(true,false);
 
-  GrMat *min_rep=new GrMat();
+  GrMat min_rep;
 #if TIMERS
   minimize_timer.start();
 #endif
   std::cout << "Minimize..." << std::flush;
-  minimize(*semi_min_rep,*min_rep);
+  minimize(semi_min_rep,min_rep);
   std::cout << "done" << std::endl;
-  delete semi_min_rep;
 #if TIMERS
   minimize_timer.stop();
 #endif
 
-  std::cout << "Resulting minimal presentation has " << min_rep->get_num_cols() << " columns and " << min_rep->num_rows << " rows" << std::endl;
+  std::cout << "Resulting minimal presentation has " << min_rep.get_num_cols() << " columns and " << min_rep.num_rows << " rows" << std::endl;
   //min_rep.print(true,false);
 
   if(argc>=3) {
     std::cout << "Writing to file \"" << argv[2] << "\"..." << std::flush;
     std::ofstream ofstr(argv[2]);
-    print_in_rivet_format(*min_rep,ofstr);
+    print_in_rivet_format(min_rep,ofstr);
     ofstr.close();
     std::cout << "done" << std::endl;
   }
-
-  delete min_rep;
 
 #if TIMERS
   print_timers();
