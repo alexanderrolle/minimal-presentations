@@ -10,6 +10,10 @@
 #define CHUNK_PREPROCESSING 1
 #endif
 
+#ifndef CLEARING
+#define CLEARING 0
+#endif
+
 #define TIMERS 1
 
 #define SWAP_GRADE 0
@@ -99,6 +103,14 @@ int main(int argc, char** argv) {
   firep_timer.stop();
 #endif
 
+  /*
+  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+  std::cout << "Max Number of threads: " << omp_get_max_threads() << std::endl;
+  omp_set_num_threads(omp_get_max_threads());
+  std::cout << "Number of threads: " << omp_get_num_threads() << std::endl;
+  */
+
+
 #if CHUNK_PREPROCESSING
 
 #if TIMERS
@@ -150,7 +162,7 @@ int main(int argc, char** argv) {
   kerbasis_timer.start();
 #endif
   std::cout << "Ker basis..." << std::flush;
-  ker_basis(*GM2,*Ker);
+  ker_basis(*GM2,*Ker,*MG);
    std::cout << "done" << std::endl;
    delete GM2;
 #if TIMERS

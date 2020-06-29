@@ -1,6 +1,9 @@
 #include<phat/boundary_matrix.h>
 #include<algorithm>
 
+#include<unordered_map>
+#include <boost/functional/hash.hpp>
+
 namespace phat {
 
   typedef std::pair<index,index> index_pair;
@@ -56,8 +59,10 @@ namespace phat {
 
     index num_rows;
     
+    //std::unordered_map<index_pair,index,boost::hash<index_pair> > start_index_of_pair;
     std::map<index_pair,index> start_index_of_pair;
-
+    //std::vector<std::vector<index> start_index_of_pair;
+    
     std::vector<Grade> grades;
 
     std::vector<Grade> row_grades;
@@ -68,8 +73,13 @@ namespace phat {
     std::vector<PQ> pq_row;
 #endif
 
+#if CLEARING
+    std::unordered_map<index,index> clearing_info;
+#endif
+
     boundary_matrix<Representation> slave;
 
+    /*
     void clear() {
       x_vals.clear();
       y_vals.clear();
@@ -81,6 +91,7 @@ namespace phat {
 	this->clear(i);
       }
     }
+    */
 
     void print(bool print_row_grades=false,bool print_indices=true) {
       std::cout << "Number of columns: " << this->get_num_cols() << std::endl;
@@ -119,6 +130,31 @@ namespace phat {
       index p = this->get_max_index(i);
       //std::cout << "Info: " << i << " "<<  p  << std::endl;
       return p!=-1 && (this->grades[i].first_index == this->row_grades[p].first_index) &&  (this->grades[i].second_index == this->row_grades[p].second_index) ;
+    }
+
+    bool pivot_is_dominating(index i) {
+      if(this->is_empty(i)) {
+	return false;
+      }
+      if(this->is_local(i)) {
+	return true;
+      }
+      index p = this->get_max_index(i);
+      Grade& pgr = this->row_grades[p];
+      //std::cout << "#### NEW COLUMN ####" << std::endl;
+      //std::cout << "pivot grade is " << pgr.first_index << ", " << pgr.second_index << std::endl;
+      std::vector<index> col;
+      this->get_col(i,col);
+      for(int j=0;j<col.size();j++) {
+	Grade& curr=this->row_grades[col[j]];
+	//std::cout << "next grade is " << curr.first_index << ", " << curr.second_index << std::endl;
+	if(curr.first_index>pgr.first_index || curr.second_index>pgr.second_index) {
+	  //std::cout << "NOT HERE" << std::endl;
+	  return false;
+	}
+      }
+      
+      return true;
     }
 
     void reduce_column(index i, bool use_slave=false, bool notify_pq=false) {
@@ -208,7 +244,7 @@ namespace phat {
 	return;
       }
       
-      std::map<double,index> val_to_index_x, val_to_index_y;
+      std::unordered_map<double,index> val_to_index_x, val_to_index_y;
       
       std::vector<double> x_vals,y_vals;
       
@@ -254,12 +290,19 @@ namespace phat {
 	M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
       }
     }
+
+    test_timer1.resume();
+    std::cout << "Num grades x " << M1.num_grades_x << std::endl;
+    std::cout << "Num grades y " << M1.num_grades_y << std::endl;
+    
+    std::cout << "n1=" << n1 << std::endl;
+    std::cout << "n2=" << n2 << std::endl;
     
     index run_x=0;
     index run_y=0;
     
     index curr_x,curr_y;
-    
+
     for(int i=0;i<=n1;i++) {
       
       if(i<n1) {
@@ -285,6 +328,9 @@ namespace phat {
       }
     }
 
+
+    test_timer1.stop();
+    test_timer2.resume();
     run_x=run_y=0;
 
     for(int i=0;i<=n2;i++) {
@@ -312,7 +358,7 @@ namespace phat {
 	}
       }
     }
-
+    test_timer2.stop();
   }
   
   template<typename Instream, typename Matrix>
@@ -320,6 +366,7 @@ namespace phat {
 				  Matrix& matrix1, 
 				  Matrix& matrix2) {
     
+
     std::vector<pre_column> pre_matrix1, pre_matrix2;
 
     std::string next;
@@ -394,7 +441,6 @@ namespace phat {
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
     std::sort(pre_matrix2.begin(),pre_matrix2.end(),sort_pre_column);
-
     std::vector<index> re_index;
     re_index.resize(pre_matrix2.size());
     
@@ -409,7 +455,6 @@ namespace phat {
       std::sort(pre_matrix1[i].boundary.begin(),
 		pre_matrix1[i].boundary.end());
     }
-
     {
       int n = pre_matrix1.size();
       matrix1.set_num_cols(n);
@@ -436,7 +481,6 @@ namespace phat {
       matrix2.num_rows=r;
       matrix2.assign_pivots();
     }
-
     assign_grade_indices(matrix1,matrix2);
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
@@ -457,6 +501,7 @@ namespace phat {
       local_pivots.push_back(-1);
     }
     std::cout << "Local reduction" << std::endl;
+    //test_timer1.start();
     for(index i=0;i<M1.get_num_cols();i++) {
       while(M1.is_local(i)) {
 	index p = M1.get_max_index(i);
@@ -469,7 +514,9 @@ namespace phat {
 	}
       }
     }
+    //test_timer1.stop();
     std::cout << "Sparsification" << std::endl;
+    //test_timer1.start();
     for(index i=0;i<M1.get_num_cols();i++) {
       if(M1.is_empty(i) || M1.is_local(i)) {
 	continue;
@@ -492,9 +539,9 @@ namespace phat {
       std::sort(col.begin(),col.end());
       M1.set_col(i,col);
     }
-
+    //test_timer1.stop();
     std::cout << "Build up smaller matrices" << std::endl;
-    
+    //test_timer2.start();
     std::vector<int> new_row_index;
     new_row_index.resize(M1.num_rows);
     index row_count=0;
@@ -515,7 +562,8 @@ namespace phat {
 	new_col_index[i]=col_count++;
       }
     }
-    
+    //test_timer2.stop();
+    test_timer3.start();
     result1.set_num_cols(col_count);
     for(index i=0;i<M1.get_num_cols();i++) {
       if(new_col_index[i]!=-1) {
@@ -546,6 +594,8 @@ namespace phat {
     result1.assign_pivots();   
     result2.assign_slave_matrix();
     result2.assign_pivots();   
+    test_timer3.stop();
+
 #if 0
     assign_grade_indices(result1,result2);
 #else
@@ -560,7 +610,10 @@ namespace phat {
     std::copy(M2.x_vals.begin(),M2.x_vals.end(),std::back_inserter(result2.x_vals));
     std::copy(M2.y_vals.begin(),M2.y_vals.end(),std::back_inserter(result2.y_vals));
 
+    test_timer4.start();
     assign_grade_indices(result1,result2,true);
+    test_timer4.stop();
+
 #endif
 
 #if SMART_REDUCTION
@@ -569,6 +622,7 @@ namespace phat {
 #endif    
 
     std::cout << "After chunk reduction, matrix has " << result1.get_num_cols() << " columns and " << result1.num_rows << " rows" << std::endl;
+
 
     //result1.print(true,true);
     //result2.print(false,true);
@@ -636,6 +690,30 @@ namespace phat {
       result.set_col(i,new_cols[i]);
     }
     result.num_rows=M.num_rows;
+    result.row_grades=M.row_grades;
+
+
+#if CLEARING
+    // check potential of clearing
+    int no_local_pairs=0;
+    int no_cols_with_dominating_pivots=0;
+    for(int i=0;i<result.get_num_cols();i++) {
+      if(result.is_empty(i)) {
+	continue;
+      }
+      if(result.is_local(i)) {
+	no_local_pairs++;
+      }
+      if(result.pivot_is_dominating(i)) {
+	no_cols_with_dominating_pivots++;
+	index p = result.get_max_index(i);
+	result.clearing_info[p]=i;
+      }
+      
+    }
+    std::cout << "Min gens matrix has " << result.get_num_cols() << " columns, out of which " << no_local_pairs << " are local and " << no_cols_with_dominating_pivots << " have a dominating pivot (" << double(no_cols_with_dominating_pivots*100)/result.get_num_cols() << "%)" << std::endl;
+#endif // of CLEARING
+
   }
 #else
 
@@ -686,8 +764,10 @@ namespace phat {
 
 #if SMART_REDUCTION
 
+
+  // If no clearing is used, the argument mingens is ignored
   template<typename GradedMatrix>
-    void ker_basis(GradedMatrix& M, GradedMatrix& result) {
+    void ker_basis(GradedMatrix& M, GradedMatrix& result, GradedMatrix& mingens) {
     
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
@@ -723,6 +803,17 @@ namespace phat {
 	  }
 	  assert(M.grades[i].first_index<=x);
 	  assert(M.grades[i].second_index==y);
+#if CLEARING
+	  if(mingens.clearing_info.count(i)!=0) {
+	    std::vector<index> col;
+	    mingens.get_col(mingens.clearing_info[i],col);
+	    new_cols.push_back(col);
+	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	    indices_in_kernel.insert(i);
+	    M.clear(i);
+	  }
+#endif
+
 	  M.reduce_column(i,true,true);
 	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
 	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
@@ -758,7 +849,7 @@ namespace phat {
 #else
 
   template<typename GradedMatrix>
-    void ker_basis(GradedMatrix& M, GradedMatrix& result) {
+    void ker_basis(GradedMatrix& M, GradedMatrix& result,GradedMatrix& mingens) {
 
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
@@ -837,6 +928,11 @@ namespace phat {
     }
     */
 
+
+    std::copy(cols.grades.begin(),cols.grades.end(),std::back_inserter(result.grades));
+
+    //test_timer4.start();
+#pragma omp parallel for schedule(dynamic,1)
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
       std::vector<index> col;
@@ -849,9 +945,8 @@ namespace phat {
       std::vector<index> new_col;
       ker.slave.get_col(ker_cols+i,new_col);
       result.set_col(i,new_col);
-      result.grades.push_back(cols.grades[i]);
-      
     }
+    //test_timer4.stop();
     // Assign row grades
     result.num_rows=ker_cols;
     std::copy(ker.grades.begin(),ker.grades.end(),std::back_inserter(result.row_grades));
@@ -903,7 +998,7 @@ namespace phat {
 
     std::vector<index> cols_to_keep;
     std::vector<Grade> col_grades;
-
+    //test_timer1.start();
     for(index i=0;i<VVM.get_num_cols();i++) {
       //std::cout << "i=" << i << std::endl;
       while(! VVM.is_empty(i)) {
@@ -937,12 +1032,14 @@ namespace phat {
 	}
       }
     }
-
+    //test_timer1.stop();
     std::vector<Column> new_cols;
     new_cols.resize(cols_to_keep.size());
 
 #if LAZY_MINIMIZATION
     //std::cout << "HERE I AM " << std::endl;
+    //test_timer2.start();
+#pragma omp parallel for schedule(dynamic,1)
     for(index k=0;k<cols_to_keep.size();k++) {
       Column& col=new_cols[k];
       index i = cols_to_keep[k];
@@ -957,6 +1054,7 @@ namespace phat {
       }
       std::reverse(col.begin(),col.end());
     }
+    //test_timer2.stop();
 #else
     for(index i=0;i<cols_to_keep.size();i++) {
       Column& col=new_cols[i];
@@ -964,13 +1062,14 @@ namespace phat {
     }
 #endif
     
-    
+    //test_timer3.start();
+
     index nr = VVM.num_rows;
     //std::cout << "Number of rows of VVM: " << nr << std::endl;
     //std::cout << "Have removed " << rows_to_delete.size() << std::endl;
     //std::cout << "Kept " << cols_to_keep.size() << " columns" << std::endl;
     index count=0;
-    std::map<index,index> index_map;
+    std::unordered_map<index,index> index_map;
     std::vector<Grade> res_row_grades;
     // Build re-indexing map
     for(index i=0;i<nr;i++) {
@@ -998,6 +1097,7 @@ namespace phat {
     for(int i=0;i<cols_to_keep.size();i++) {
       result.set_col(i,new_cols[i]);
     }
+    //test_timer3.stop();
   }
   
   template<typename GradedMatrix>
@@ -1042,7 +1142,7 @@ namespace phat {
     }
     std::sort(row_info.begin(),row_info.end(),grade_colex_sort());
     
-    std::map<index,index> re_index_rows;
+    std::unordered_map<index,index> re_index_rows;
 
     for(index i=0;i<row_info.size();i++) {
       re_index_rows[row_info[i].second]=i;
