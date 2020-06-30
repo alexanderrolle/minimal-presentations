@@ -156,7 +156,7 @@ def function_Rips_FIRep(points, function_vals, p, file_name):
         line_to_print += str(item[1][0])
         line_to_print += ' '
         line_to_print += str(item[1][1])
-        line_to_print += ' :'
+        line_to_print += ' ;'
         
         col = []
         vertices = item[0]
@@ -179,7 +179,7 @@ def function_Rips_FIRep(points, function_vals, p, file_name):
         line_to_print += str(item[1][0])
         line_to_print += ' '
         line_to_print += str(item[1][1])
-        line_to_print += ' :'
+        line_to_print += ' ;'
         
         col = []
         vertices = item[0]
