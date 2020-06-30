@@ -610,7 +610,7 @@ namespace phat {
     std::cout << "Sparsification" << std::endl;
     //test_timer2.start();
 #if PARALLELIZATION
-#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#pragma omp parallel for schedule(guided,1)
 #endif
     for(index i=0;i<M1.get_num_cols();i++) {
       if(M1.is_empty(i) || M1.is_local(i)) {
@@ -1046,7 +1046,7 @@ namespace phat {
 
     //test_timer4.start();
 #if PARALLELIZATION
-#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#pragma omp parallel for schedule(guided,1)
 #endif
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
@@ -1161,7 +1161,7 @@ namespace phat {
     //std::cout << "HERE I AM " << std::endl;
     //test_timer2.start();
 #if PARALLELIZATION
-#pragma omp parallel for schedule(nonmonotonic:dynamic,1)
+#pragma omp parallel for schedule(guided,1)
 #endif
     for(index k=0;k<cols_to_keep.size();k++) {
       Column& col=new_cols[k];
