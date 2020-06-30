@@ -53,6 +53,121 @@ namespace phat {
     }
   };
 
+  class Grid_scheduler {
+    
+    index_pair _curr_pair;
+    bool _at_end;
+
+    //std::unordered_map<index_pair,index,boost::hash<index_pair> > start_index_of_pair;
+    //std::map<index_pair,index> start_index_of_pair;
+    std::vector<std::vector<index>> start_index_of_pair;
+
+    index num_grades_x;
+    index num_grades_y;
+
+    index num_cols;
+
+  public:
+
+    Grid_scheduler() {}
+    
+    template<typename GradedMatrix>
+      Grid_scheduler(GradedMatrix& M) {
+      
+      num_cols = M.get_num_cols();
+      
+      num_grades_x=M.num_grades_x;
+      num_grades_y=M.num_grades_y;
+
+      index run_x=0;
+      index run_y=0;
+      
+      index curr_x,curr_y;
+      
+      start_index_of_pair.resize(num_grades_x);
+      for(int i=0;i<M.num_grades_x;i++) {
+	start_index_of_pair[i].resize(num_grades_y);
+      }
+      
+      for(int i=0;i<=num_cols;i++) {
+	
+	if(i<num_cols) {
+	  curr_x=M.grades[i].first_index;
+	  curr_y=M.grades[i].second_index;
+	} else {
+	  curr_x=num_grades_x-1;
+	  curr_y=num_grades_y-1;
+	}
+	
+	//assert(run_x<=curr_x);
+	//assert(run_y<=curr_y);
+	
+	while(run_y<curr_y || (run_y==curr_y && run_x <= curr_x)) {
+	  //std::cout << "M1: Set index of " << run_x << " " << run_y << " to " << i << std::endl;
+	  //std::cout << "Curr: " << curr_x << " " << curr_y << std::endl;
+	  start_index_of_pair[run_x][run_y]=i;
+	  run_x++;
+	  if(run_x==num_grades_x) {
+	    run_y++;
+	    run_x=0;
+	  }
+	}
+      }
+      _curr_pair=std::make_pair(0,0);
+      _at_end=(num_grades_x==0 && num_grades_y==0);
+    }
+    
+    bool at_end() {
+      return _at_end;
+    }
+
+    index_pair next_grade() {
+      index_pair result=_curr_pair;
+
+      if(_curr_pair.first==num_grades_x-1 && _curr_pair.second==num_grades_y-1) {
+	_at_end=true;
+      } else {
+	if(_curr_pair.second==num_grades_y-1) {
+	  _curr_pair.second=0;
+	  _curr_pair.first++;
+	} else {
+	  _curr_pair.second++;
+	}
+      }	
+
+      return result;
+    }
+
+    index_pair index_range_at(index x, index y) {
+      index end_xy;
+      if(x<num_grades_x-1) {
+	end_xy = start_index_of_pair[x+1][y];
+      } else {
+	end_xy = start_index_of_pair[0][y+1];
+      }
+      if(x==num_grades_x-1 && y==num_grades_y-1) {
+	end_xy=num_cols;
+      }
+      index start_xy = start_index_of_pair[x][y];
+      return std::make_pair(start_xy,end_xy);
+    }
+    
+    // Needed for the original version
+    void extended_index_range_at(index x,index y,
+				 index& start_xy,
+				 index& end_xy,
+				 index& start_xy_of_grade) {
+
+      index_pair index_range=this->index_range_at(x,y);
+      start_xy_of_grade=index_range.first;
+      end_xy=index_range.second;
+      start_xy = start_index_of_pair[0][y];
+    }
+
+
+  };
+
+
   template<typename Representation=vector_heap>
     class GradedMatrix  : public boundary_matrix<Representation> {
     
@@ -65,9 +180,7 @@ namespace phat {
 
     index num_rows;
     
-    //std::unordered_map<index_pair,index,boost::hash<index_pair> > start_index_of_pair;
-    //std::map<index_pair,index> start_index_of_pair;
-    std::vector<std::vector<index>> start_index_of_pair;
+    Grid_scheduler grid_scheduler;
     
     std::vector<Grade> grades;
 
@@ -245,95 +358,30 @@ namespace phat {
 
   };
 
-
-  // Assumes that columns are already added to matrix in lex order
+  
+  
   template<typename GradedMatrix>
-    void assign_grade_indices(GradedMatrix& M1, GradedMatrix& M2, bool indices_already_assigned=false) {
-    
-    int n1=M1.get_num_cols();
-    int n2=M2.get_num_cols();
-    if(!indices_already_assigned) {
+    void assign_index_range(GradedMatrix& M) {
+   int n = M.get_num_cols();
 
-      //std::cout << "Assgin grade indices with " << n1 << ", " << n2 << " columns" << std::endl;
-      if(n1==0 && n2==0) {
-	return;
-      }
-      
-      std::unordered_map<double,index> val_to_index_x, val_to_index_y;
-      
-      std::vector<double> x_vals,y_vals;
-      
-      for(int i=0;i<n1;i++) {
-	x_vals.push_back(M1.grades[i].first_val);
-	y_vals.push_back(M1.grades[i].second_val);
-      }
-      for(int i=0;i<n2;i++) {
-	x_vals.push_back(M2.grades[i].first_val);
-	y_vals.push_back(M2.grades[i].second_val);
-      }
-      
-      std::sort(x_vals.begin(),x_vals.end());
-      auto last_x = std::unique(x_vals.begin(),x_vals.end());
-      x_vals.erase(last_x,x_vals.end());
-      std::sort(y_vals.begin(),y_vals.end());
-      auto last_y = std::unique(y_vals.begin(),y_vals.end());
-      y_vals.erase(last_y,y_vals.end());
-      
-      std::cout << "Found " << x_vals.size() << " different x-values and " << y_vals.size() << " different y-values" << std::endl;
-      M1.x_vals=x_vals;
-      M1.y_vals=y_vals;
-      M1.num_grades_x = x_vals.size();
-      M1.num_grades_y = y_vals.size();
-      M2.x_vals=x_vals;
-      M2.y_vals=y_vals;
-      M2.num_grades_x = x_vals.size();
-      M2.num_grades_y = y_vals.size();
-      
-      for(index i=0;i<x_vals.size();i++) {
-	val_to_index_x[x_vals[i]]=i;
-      }
-      for(index i=0;i<y_vals.size();i++) {
-	val_to_index_y[y_vals[i]]=i;
-      }
-      
-      for(int i=0;i<n1;i++) {
-	M1.grades[i].first_index=val_to_index_x[M1.grades[i].first_val];
-	M1.grades[i].second_index=val_to_index_y[M1.grades[i].second_val];
-      }
-      for(int i=0;i<n2;i++) {
-	M2.grades[i].first_index=val_to_index_x[M2.grades[i].first_val];
-	M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
-      }
-    }
-    
-    std::cout << "Num grades x " << M1.num_grades_x << std::endl;
-    std::cout << "Num grades y " << M1.num_grades_y << std::endl;
-    
-    std::cout << "n1=" << n1 << std::endl;
-    std::cout << "n2=" << n2 << std::endl;
-    
     index run_x=0;
     index run_y=0;
     
     index curr_x,curr_y;
 
-    M1.start_index_of_pair.resize(M1.num_grades_x);
-    for(int i=0;i<M1.num_grades_x;i++) {
-      M1.start_index_of_pair[i].resize(M1.num_grades_y);
-    }
-    M2.start_index_of_pair.resize(M2.num_grades_x);
-    for(int i=0;i<M2.num_grades_x;i++) {
-      M2.start_index_of_pair[i].resize(M2.num_grades_y);
+    M.start_index_of_pair.resize(M.num_grades_x);
+    for(int i=0;i<M.num_grades_x;i++) {
+      M.start_index_of_pair[i].resize(M.num_grades_y);
     }
 
-    for(int i=0;i<=n1;i++) {
+    for(int i=0;i<=n;i++) {
       
-      if(i<n1) {
-	curr_x=M1.grades[i].first_index;
-	curr_y=M1.grades[i].second_index;
+      if(i<n) {
+	curr_x=M.grades[i].first_index;
+	curr_y=M.grades[i].second_index;
       } else {
-	curr_x=M1.num_grades_x-1;
-	curr_y=M1.num_grades_y-1;
+	curr_x=M.num_grades_x-1;
+	curr_y=M.num_grades_y-1;
       }
       
 	//assert(run_x<=curr_x);
@@ -342,44 +390,82 @@ namespace phat {
       while(run_y<curr_y || (run_y==curr_y && run_x <= curr_x)) {
 	//std::cout << "M1: Set index of " << run_x << " " << run_y << " to " << i << std::endl;
 	//std::cout << "Curr: " << curr_x << " " << curr_y << std::endl;
-	M1.start_index_of_pair[run_x][run_y]=i;
+	M.start_index_of_pair[run_x][run_y]=i;
 	run_x++;
-	if(run_x==M1.num_grades_x) {
+	if(run_x==M.num_grades_x) {
 	  run_y++;
 	  run_x=0;
 	}
       }
     }
+ 
+    
+  }
 
+  // Assumes that columns are already added to matrix in lex order
+  template<typename GradedMatrix>
+    void assign_grade_indices(GradedMatrix& M1, GradedMatrix& M2) {
+    
+    int n1=M1.get_num_cols();
+    int n2=M2.get_num_cols();
 
-    run_x=run_y=0;
-
-    for(int i=0;i<=n2;i++) {
-      
-      if(i<n2) {
-	curr_x=M2.grades[i].first_index;
-	curr_y=M2.grades[i].second_index;
-      } else {
-	curr_x=M2.num_grades_x-1;
-	curr_y=M2.num_grades_y-1;
-      }
-      
-      //std::cout << "M2: Curr: " << curr_x << " " << curr_y << std::endl;
-
-	//assert(run_x<=curr_x);
-	//assert(run_y<=curr_y);
-      
-      while(run_y<curr_y || (run_y==curr_y && run_x <= curr_x)) {
-	//std::cout << "M2: Set index of " << run_x << " " << run_y << " to " << i << std::endl;
-	M2.start_index_of_pair[run_x][run_y]=i;
-	run_x++;
-	if(run_x==M2.num_grades_x) {
-	  run_y++;
-	  run_x=0;
-	}
-      }
+    //std::cout << "Assgin grade indices with " << n1 << ", " << n2 << " columns" << std::endl;
+    if(n1==0 && n2==0) {
+      return;
     }
-
+    
+    std::unordered_map<double,index> val_to_index_x, val_to_index_y;
+    
+    std::vector<double> x_vals,y_vals;
+    
+    for(int i=0;i<n1;i++) {
+      x_vals.push_back(M1.grades[i].first_val);
+      y_vals.push_back(M1.grades[i].second_val);
+    }
+    for(int i=0;i<n2;i++) {
+      x_vals.push_back(M2.grades[i].first_val);
+      y_vals.push_back(M2.grades[i].second_val);
+    }
+    
+    std::sort(x_vals.begin(),x_vals.end());
+    auto last_x = std::unique(x_vals.begin(),x_vals.end());
+    x_vals.erase(last_x,x_vals.end());
+    std::sort(y_vals.begin(),y_vals.end());
+    auto last_y = std::unique(y_vals.begin(),y_vals.end());
+    y_vals.erase(last_y,y_vals.end());
+    
+    std::cout << "Found " << x_vals.size() << " different x-values and " << y_vals.size() << " different y-values" << std::endl;
+    M1.x_vals=x_vals;
+    M1.y_vals=y_vals;
+    M1.num_grades_x = x_vals.size();
+    M1.num_grades_y = y_vals.size();
+    M2.x_vals=x_vals;
+    M2.y_vals=y_vals;
+    M2.num_grades_x = x_vals.size();
+    M2.num_grades_y = y_vals.size();
+    
+    for(index i=0;i<x_vals.size();i++) {
+      val_to_index_x[x_vals[i]]=i;
+    }
+    for(index i=0;i<y_vals.size();i++) {
+      val_to_index_y[y_vals[i]]=i;
+    }
+    
+    for(int i=0;i<n1;i++) {
+      M1.grades[i].first_index=val_to_index_x[M1.grades[i].first_val];
+      M1.grades[i].second_index=val_to_index_y[M1.grades[i].second_val];
+      }
+    for(int i=0;i<n2;i++) {
+      M2.grades[i].first_index=val_to_index_x[M2.grades[i].first_val];
+	M2.grades[i].second_index=val_to_index_y[M2.grades[i].second_val];
+    }
+  
+    
+    std::cout << "Num grades x " << M1.num_grades_x << std::endl;
+    std::cout << "Num grades y " << M1.num_grades_y << std::endl;
+    
+    std::cout << "n1=" << n1 << std::endl;
+    std::cout << "n2=" << n2 << std::endl;
   }
 
   struct File_reader {
@@ -414,12 +500,30 @@ namespace phat {
     }
   };
  
+#if PERTURB
+  
+  double rand_double(double max) {
+    double lower_bound = 0;
+    double upper_bound = 10000;
+    std::uniform_real_distribution<double> unif(0,max);
+    std::default_random_engine re;
+    return unif(re);
+  }
+#endif
+
+  // The sign is just a hack for the perturbation scenario and normally has no effect
   void load_prematrix_contents(File_reader& reader,
 			       std::vector<pre_column>& pre_matrix,
-			       int n) {
+			       int n,
+			       int sign) {
 
 
 #if 1
+
+#if PERTURB
+    std::uniform_real_distribution<double> unif(0,0.00001);
+    std::default_random_engine re;
+#endif
     pre_matrix.resize(n);
     std::string line;
     for(int i=0;i<n;i++) {
@@ -428,8 +532,14 @@ namespace phat {
       line=reader.next_line();
       char* token = strtok((char*)line.c_str()," ");
       curr.grade.first_val = atof(token);
+#if PERTURB
+      curr.grade.first_val+=sign*unif(re);
+#endif
       token = strtok(NULL," ");
       curr.grade.second_val = atof(token);
+#if PERTURB
+      curr.grade.second_val+=sign*unif(re);
+#endif
 #if SWAP_GRADE
       std::swap(curr.grade.first_val,curr.grade.second_val);
 #endif
@@ -482,7 +592,6 @@ namespace phat {
 
 
     std::string next=reader.next_line();
-    std::cout << "Next line: " << next << std::endl;
     if(next!="firep") {
       std::cerr << "Keyword 'firep' expected" << std::endl;
       std::exit(1);
@@ -501,8 +610,8 @@ namespace phat {
 
     std::cout << "t,s,r=" << t << " " << s << " " << r << std::endl;
     
-    load_prematrix_contents(reader,pre_matrix1,t);
-    load_prematrix_contents(reader,pre_matrix2,s);
+    load_prematrix_contents(reader,pre_matrix1,t,+1);
+    load_prematrix_contents(reader,pre_matrix2,s,-1);
 
   }
   
@@ -572,6 +681,10 @@ namespace phat {
 
 
     assign_grade_indices(matrix1,matrix2);
+#if !CHUNK_PREPROCESSING
+    matrix1.grid_scheduler=Grid_scheduler(matrix1);
+    matrix2.grid_scheduler=Grid_scheduler(matrix2);
+#endif
     test_timer4.start();
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
@@ -691,9 +804,6 @@ namespace phat {
     result2.assign_pivots();   
 
 
-#if 0
-    assign_grade_indices(result1,result2);
-#else
     result1.num_grades_x=M1.num_grades_x;
     result1.num_grades_y=M1.num_grades_y;
     std::copy(M1.x_vals.begin(),M1.x_vals.end(),std::back_inserter(result1.x_vals));
@@ -705,10 +815,12 @@ namespace phat {
     std::copy(M2.x_vals.begin(),M2.x_vals.end(),std::back_inserter(result2.x_vals));
     std::copy(M2.y_vals.begin(),M2.y_vals.end(),std::back_inserter(result2.y_vals));
 
+    std::cout << "Setting up grid scheduler..." << std::flush;
 
-    assign_grade_indices(result1,result2,true);
-
-#endif
+    result1.grid_scheduler=Grid_scheduler(result1);
+    result2.grid_scheduler=Grid_scheduler(result2);
+    
+    std::cout << "done" << std::endl;
 
 #if SMART_REDUCTION
     result1.pq_row.resize(result1.num_grades_y);
@@ -735,50 +847,52 @@ namespace phat {
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
 
-    for(index x = 0; x < M.num_grades_x;x++) {
-      for(index y = 0; y < M.num_grades_y;y++) {
-	
-	//std::cout << "Min gens " << x << " " << y << std::endl;
-	
-	PQ& pq = M.pq_row[y];
+    Grid_scheduler& grid = M.grid_scheduler;
 
-	index end_xy;
-	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[x+1][y];
-	} else {
-	  end_xy = M.start_index_of_pair[0][y+1];
+    while(! grid.at_end()) {
+      
+      index_pair new_grade = grid.next_grade();
+      
+      index x = new_grade.first;
+      index y = new_grade.second;
+	
+      //std::cout << "Min gens " << x << " " << y << std::endl;
+	
+      PQ& pq = M.pq_row[y];
+
+      index_pair range_xy = grid.index_range_at(x,y);
+      
+      index start_xy = range_xy.first;
+      index end_xy = range_xy.second;
+      
+      
+      //std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
+      assert(start_xy<=end_xy);
+      //std::cout << "Before adding, pq of row has size " << pq.size() << std::endl;
+      for(index i = start_xy;i<end_xy;i++) {
+	pq.push(i);
+      }
+      //std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+      while(!pq.empty()) {
+	index i = pq.top();
+	//std::cout << "Index " << i << std::endl;
+	// Remove duplicates
+	while(!pq.empty() && i==pq.top()) {
+	  pq.pop();
 	}
-	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
-	  end_xy=M.get_num_cols();
-	}
-	index start_xy = M.start_index_of_pair[x][y];
-	//std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
-	assert(start_xy<=end_xy);
-	//std::cout << "Before adding, pq of row has size " << pq.size() << std::endl;
-	for(index i = start_xy;i<end_xy;i++) {
-	  pq.push(i);
-	}
-	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
-	while(!pq.empty()) {
-	  index i = pq.top();
-	  //std::cout << "Index " << i << std::endl;
-	  // Remove duplicates
-	  while(!pq.empty() && i==pq.top()) {
-	    pq.pop();
-	  }
-	  assert(M.grades[i].first_index<=x);
-	  assert(M.grades[i].second_index==y);
-	  M.reduce_column(i,false,true);
-	  if(!M.is_empty(i) && i>=start_xy&& i<end_xy) {
-	    std::vector<index> col;
-	    M.get_col(i,col);
-	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
-	    new_grades.push_back(M.grades[i]);
-	    new_cols.push_back(col);
-	  }
+	assert(M.grades[i].first_index<=x);
+	assert(M.grades[i].second_index==y);
+	M.reduce_column(i,false,true);
+	if(!M.is_empty(i) && i>=start_xy&& i<end_xy) {
+	  std::vector<index> col;
+	  M.get_col(i,col);
+	  //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
+	  new_grades.push_back(M.grades[i]);
+	  new_cols.push_back(col);
 	}
       }
     }
+  
     result.set_num_cols(new_cols.size());
     for(index i=0;i<new_cols.size();i++) {
       result.grades.push_back(new_grades[i]);
@@ -786,8 +900,8 @@ namespace phat {
     }
     result.num_rows=M.num_rows;
     result.row_grades=M.row_grades;
-
-
+    
+    
 #if CLEARING
     // check potential of clearing
     int no_local_pairs=0;
@@ -818,32 +932,30 @@ namespace phat {
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
 
-    for(index x = 0; x < M.num_grades_x;x++) {
-      for(index y = 0; y < M.num_grades_y;y++) {
+    Grid_scheduler& grid = M.grid_scheduler;
+
+    while(! grid.at_end()) {
+      
+      index_pair new_grade = grid.next_grade();
+      
+      index x = new_grade.first;
+      index y = new_grade.second;
+      
+      index start_xy,end_xy,start_xy_of_grade;
+      
+      grid.extended_index_range_at(x,y,start_xy,end_xy,start_xy_of_grade);
 	
-	index start_xy = M.start_index_of_pair[0][y];
-	index end_xy;
-	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[x+1][y];
-	} else {
-	  end_xy = M.start_index_of_pair[0][y+1];
-	}
-	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
-	  end_xy=M.get_num_cols();
-	}
-	index start_xy_of_grade = M.start_index_of_pair[x][y];
-	//std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " (" << start_xy_of_grade << ") " << end_xy << std::endl;
-	assert(start_xy<=start_xy_of_grade);
-	assert(start_xy_of_grade<=end_xy);
-	for(index i = start_xy;i<end_xy;i++) {
-	  M.reduce_column(i);
-	  if(!M.is_empty(i) && i>=start_xy_of_grade&& i<end_xy) {
-	    std::vector<index> col;
-	    M.get_col(i,col);
-	    //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
-	    new_grades.push_back(M.grades[i]);
-	    new_cols.push_back(col);
-	  }
+      std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " (" << start_xy_of_grade << ") " << end_xy << std::endl;
+      assert(start_xy<=start_xy_of_grade);
+      assert(start_xy_of_grade<=end_xy);
+      for(index i = start_xy;i<end_xy;i++) {
+	M.reduce_column(i);
+	if(!M.is_empty(i) && i>=start_xy_of_grade&& i<end_xy) {
+	  std::vector<index> col;
+	  M.get_col(i,col);
+	  //std::cout << "NEW MIN GENERATOR Count" << count << " index " << i << " grade " << x << " " << y << std::endl; 
+	  new_grades.push_back(M.grades[i]);
+	  new_cols.push_back(col);
 	}
       }
     }
@@ -875,68 +987,67 @@ namespace phat {
 
     //std::set<index> indices_in_kernel;
 
+    Grid_scheduler& grid = M.grid_scheduler;
+    
+    while(! grid.at_end()) {
+      
+      index_pair new_grade = grid.next_grade();
+      
+      index x = new_grade.first;
+      index y = new_grade.second;
 
-    for(index x = 0; x < M.num_grades_x;x++) {
-      for(index y = 0; y < M.num_grades_y;y++) {
+      PQ& pq = M.pq_row[y];
+      
+      index_pair range_xy = grid.index_range_at(x,y);
+      
+      index start_xy = range_xy.first;
+      index end_xy = range_xy.second;
 
-	PQ& pq = M.pq_row[y];
-	
-	index start_xy = M.start_index_of_pair[x][y];
-	index end_xy;
-	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[x+1][y];
-	} else {
-	  end_xy = M.start_index_of_pair[0][y+1];
-	}
-	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
-	  end_xy=M.get_num_cols();
-	}
-	assert(start_xy<=end_xy);
+      assert(start_xy<=end_xy);
 
-	for(index i = start_xy;i<end_xy;i++) {
-	  pq.push(i);
+      for(index i = start_xy;i<end_xy;i++) {
+	pq.push(i);
+      }
+      //std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+      //test_timer1.resume();
+      while(!pq.empty()) {
+	index i = pq.top();
+	// Remove duplicates
+	while(!pq.empty() && i==pq.top()) {
+	  pq.pop();
 	}
-	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
-	//test_timer1.resume();
-	while(!pq.empty()) {
-	  index i = pq.top();
-	  // Remove duplicates
-	  while(!pq.empty() && i==pq.top()) {
-	    pq.pop();
-	  }
-	  assert(M.grades[i].first_index<=x);
-	  assert(M.grades[i].second_index==y);
+	assert(M.grades[i].first_index<=x);
+	assert(M.grades[i].second_index==y);
 #if CLEARING
-	  if(mingens.clearing_info.count(i)!=0) {
+	if(mingens.clearing_info.count(i)!=0) {
+	  std::vector<index> col;
+	  mingens.get_col(mingens.clearing_info[i],col);
+	  new_cols.push_back(col);
+	  new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	  indices_in_kernel[i]=true;;
+	  //indices_in_kernel.insert(i);
+	  M.clear(i);
+	}
+#endif
+	//test_timer3.resume();
+	M.reduce_column(i,true,true);
+	//test_timer3.stop();
+	//test_timer2.resume();
+	if(!indices_in_kernel[i] && M.is_empty(i)) {
+	  //if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
+	  //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
+	  {
 	    std::vector<index> col;
-	    mingens.get_col(mingens.clearing_info[i],col);
+	    M.slave.get_col(i,col);
 	    new_cols.push_back(col);
 	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	    indices_in_kernel[i]=true;;
+	    indices_in_kernel[i]=true;
 	    //indices_in_kernel.insert(i);
-	    M.clear(i);
 	  }
-#endif
-	  //test_timer3.resume();
-	  M.reduce_column(i,true,true);
-	  //test_timer3.stop();
-	  //test_timer2.resume();
-	  if(!indices_in_kernel[i] && M.is_empty(i)) {
-	  //if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
-	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
-	    {
-	      std::vector<index> col;
-	      M.slave.get_col(i,col);
-	      new_cols.push_back(col);
-	      new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	      indices_in_kernel[i]=true;
-	      //indices_in_kernel.insert(i);
-	    }
-	  }
-	  //test_timer2.stop();
 	}
-	//test_timer1.stop();
+	//test_timer2.stop();
       }
+      //test_timer1.stop();
     }
     result.set_num_cols(new_cols.size());
     for(index i=0;i<new_cols.size();i++) {
@@ -969,40 +1080,37 @@ namespace phat {
     for(index i=0;i<M.get_num_cols();i++) {
       indices_in_kernel[i]=false;
     }
+
+    Grid_scheduler& grid = M.grid_scheduler;
     
-    for(index x = 0; x < M.num_grades_x;x++) {
-      for(index y = 0; y < M.num_grades_y;y++) {
-
-	index start_xy = M.start_index_of_pair[0][y];
-	index end_xy;
-	if(x<M.num_grades_x-1) {
-	  end_xy = M.start_index_of_pair[x+1][y];
-	} else {
-	  end_xy = M.start_index_of_pair[0][y+1];
+    while(! grid.at_end()) {
+      
+      index_pair new_grade = grid.next_grade();
+      
+      index x = new_grade.first;
+      index y = new_grade.second;
+      
+      index start_xy,end_xy,start_xy_of_grade;
+      
+      grid.extended_index_range_at(x,y,start_xy,end_xy,start_xy_of_grade);
+      
+      assert(start_xy<=start_xy_of_grade);
+      assert(start_xy_of_grade<=end_xy);
+      
+      //test_timer3.resume();
+      for(index i = start_xy;i<end_xy;i++) {
+	M.reduce_column(i,true);
+	if(!indices_in_kernel[i] && M.is_empty(i)) {
+	  //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
+	  std::vector<index> col;
+	  M.slave.get_col(i,col);
+	  new_cols.push_back(col);
+	  new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
+	  indices_in_kernel[i]=true;
 	}
-	if(x==M.num_grades_x-1 && y==M.num_grades_y-1) {
-	  end_xy=M.get_num_cols();
-	}
-	//std::cout << "Ker basis for " << x << " " << y << " traverses through index range " << start_xy << " " << end_xy << std::endl;
-	index start_xy_of_grade = M.start_index_of_pair[x][y];
-	assert(start_xy<=start_xy_of_grade);
-	assert(start_xy_of_grade<=end_xy);
-	
-	//test_timer3.resume();
-	for(index i = start_xy;i<end_xy;i++) {
-	  M.reduce_column(i,true);
-	  if(!indices_in_kernel[i] && M.is_empty(i)) {
-	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
-	    std::vector<index> col;
-	    M.slave.get_col(i,col);
-	    new_cols.push_back(col);
-	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	    indices_in_kernel[i]=true;
-	  }
-	}
-	//test_timer3.stop();
-
       }
+      //test_timer3.stop();
+      
     }
     result.set_num_cols(new_cols.size());
     for(index i=0;i<new_cols.size();i++) {

@@ -15,11 +15,11 @@
 #endif
 
 #ifndef PARALLELIZATION
-#define PARALLELIZATION 1
+#define PARALLELIZATION 0
 #endif
 
 #ifndef MIN_GENS_AND_KER_BASIS_IN_PARALLEL
-#define MIN_GENS_AND_KER_BASIS_IN_PARALLEL 1
+#define MIN_GENS_AND_KER_BASIS_IN_PARALLEL 0
 #endif
 
 #if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
@@ -29,6 +29,12 @@
 #define TIMERS 1
 
 #define SWAP_GRADE 0
+
+#define PERTURB 0
+
+#if PERTURB
+#include<random>
+#endif
 
 #include <iostream>
 #include <fstream>
