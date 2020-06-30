@@ -4,6 +4,10 @@
 #include<unordered_map>
 #include <boost/functional/hash.hpp>
 
+#include <string>
+#include <cstdio>
+#include <cerrno>
+
 namespace phat {
 
   typedef std::pair<index,index> index_pair;
@@ -15,6 +19,7 @@ namespace phat {
     index first_index;
     double second_val;
     index second_index;
+    Grade() {}
     Grade(double x, double y) : first_val(x), second_val(y) {}
     Grade(index ind_x, index ind_y, double val_x, double val_y) : first_val(val_x), first_index(ind_x), second_val(val_y), second_index(ind_y) {}
     Grade(const Grade& other) : first_val(other.first_val), first_index(other.first_index),
@@ -28,6 +33,7 @@ namespace phat {
     index idx;
     Grade grade;
     std::vector<index> boundary;
+    pre_column() {}
     pre_column(index idx, Grade& grade, std::vector<index>& boundary)
       : idx(idx), grade(grade), boundary(boundary) {
       std::sort(boundary.begin(),boundary.end());
@@ -92,6 +98,16 @@ namespace phat {
       }
     }
     */
+
+#if !LAZY_MINIMIZATION
+
+    // Needed only for vector_vector column type
+    // This is not following the phat interface, but uses the internal structure of columns (pure hack to avoid excessive copying of columns)
+    bool contains(index i, index m) {
+      return std::binary_search(this->rep.matrix[i].indices.begin(),this->rep.matrix[i].indices.end(),m);
+    }
+
+#endif
 
     void print(bool print_row_grades=false,bool print_indices=true) {
       std::cout << "Number of columns: " << this->get_num_cols() << std::endl;
@@ -366,86 +382,128 @@ namespace phat {
 
   }
 
-  void load_file_into_prematrix_cpp(char* filename,
-				    std::vector<pre_column>& pre_matrix1,
-				    std::vector<pre_column>& pre_matrix2,
-				    int& r) {
-
-     std::ifstream instr(filename);
+  struct File_reader {
     
-     std::string next;
-    std::getline(instr,next);
+    int pos;
+    
+    std::string data;
+    
+    File_reader(const char *filename) : pos(0) {
+      // Copied from http://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+      std::FILE *fp = std::fopen(filename, "rb");
+      if (fp) {
+	std::fseek(fp, 0, SEEK_END);
+	data.resize(std::ftell(fp));
+	std::rewind(fp);
+	std::fread(&data[0], 1, data.size(), fp);
+	std::fclose(fp);
+      } else {
+	throw(errno);
+      }
+    }
+    
+    std::string next_line() {
+      int old_pos=pos;
+      while(data[pos]!='\n') {
+	pos++;
+      }
+      if(pos!=data.length()) {
+	pos++;
+      }
+      return data.substr(old_pos,pos-old_pos-1);
+    }
+  };
+ 
+  void load_prematrix_contents(File_reader& reader,
+			       std::vector<pre_column>& pre_matrix,
+			       int n) {
+
+
+#if 1
+    pre_matrix.resize(n);
+    std::string line;
+    for(int i=0;i<n;i++) {
+      pre_column& curr = pre_matrix[i];
+      curr.idx=i;
+      line=reader.next_line();
+      char* token = strtok((char*)line.c_str()," ");
+      curr.grade.first_val = atof(token);
+      token = strtok(NULL," ");
+      curr.grade.second_val = atof(token);
+#if SWAP_GRADE
+      std::swap(curr.grade.first_val,curr.grade.second_val);
+#endif
+      token = strtok(NULL," ");
+      if(strcmp(token,";")) {
+	std::cerr << "Semicolon missing" << std::endl;
+      }
+      std::vector<index> indices;
+      while(token = strtok(NULL," ") ) {
+	curr.boundary.push_back(atoi(token));
+      }
+      std::sort(curr.boundary.begin(),curr.boundary.end());
+      //std::cout << "Read " << indices.size() << " indices" << std::endl;
+    }
+
+#else
+    std::string line,next;           
+    for(int i=0;i<n;i++) {
+      std::getline(instr,line);
+      std::stringstream sstr(line);
+      double x,y;
+      sstr >> x >> y;
+#if SWAP_GRADE
+      Grade grade(y,x);
+#else
+      Grade grade(x,y);
+#endif
+      sstr >> next;
+      if(next!=";") {
+	std::cerr << "Semicolon missing" << std::endl;
+      }
+      std::vector<index> indices;
+      int next_id;
+      while(sstr.good()) {
+	sstr >> next_id;
+	indices.push_back(next_id);
+      }
+      pre_matrix.push_back(pre_column(i,grade,indices));
+    }
+#endif
+  }
+
+
+  
+  void load_data_into_prematrix(File_reader& reader,
+				std::vector<pre_column>& pre_matrix1,
+				std::vector<pre_column>& pre_matrix2,
+				int& r) {
+
+
+
+    std::string next=reader.next_line();
+    std::cout << "Next line: " << next << std::endl;
     if(next!="firep") {
       std::cerr << "Keyword 'firep' expected" << std::endl;
       std::exit(1);
     }
-    std::string line;
-    // Read over label info
-    std::getline(instr,line);
-    //std::cout << line << std::endl;
-    std::getline(instr,line);
+    std::string line=reader.next_line();
+    line=reader.next_line();
     //std::cout << line << std::endl;
 
     int t,s;
 
     {
-      std::getline(instr,line);
+      line = reader.next_line();
       std::stringstream sstr(line);
       sstr >> t >> s >> r;
     }
 
     std::cout << "t,s,r=" << t << " " << s << " " << r << std::endl;
-
-    test_timer1.start();
-    for(int i=0;i<t;i++) {
-      std::getline(instr,line);
-      std::stringstream sstr(line);
-      double x,y;
-      sstr >> x >> y;
-#if SWAP_GRADE
-      Grade grade(y,x);
-#else
-      Grade grade(x,y);
-#endif
-      sstr >> next;
-      if(next!=";") {
-	std::cerr << "Semicolon missing" << std::endl;
-      }
-      std::vector<index> indices;
-      int next_id;
-      while(sstr.good()) {
-	sstr >> next_id;
-	indices.push_back(next_id);
-      }
-      //std::cout << "Read " << indices.size() << " indices" << std::endl;
-
-      pre_matrix1.push_back(pre_column(i,grade,indices));
-    }
-    for(int i=0;i<s;i++) {
-      std::getline(instr,line);
-      std::stringstream sstr(line);
-      double x,y;
-      sstr >> x >> y;
-#if SWAP_GRADE
-      Grade grade(y,x);
-#else
-      Grade grade(x,y);
-#endif
-      sstr >> next;
-      if(next!=";") {
-	std::cerr << "Semicolon missing" << std::endl;
-      }
-      std::vector<index> indices;
-      int next_id;
-      while(sstr.good()) {
-	sstr >> next_id;
-	indices.push_back(next_id);
-      }
-      pre_matrix2.push_back(pre_column(i,grade,indices));
-    }
-    test_timer1.stop();
-     
     
+    load_prematrix_contents(reader,pre_matrix1,t);
+    load_prematrix_contents(reader,pre_matrix2,s);
+
   }
   
   template<typename Matrix>
@@ -453,13 +511,18 @@ namespace phat {
 				  Matrix& matrix1, 
 				  Matrix& matrix2) {
 
-   
+    test_timer5.start();
     std::vector<pre_column> pre_matrix1, pre_matrix2;
     int r;
+    std::cout << "Loading data into string..." << std::flush;
+    File_reader reader(filename);
+    std::cout << "done" << std::endl;
 
-    load_file_into_prematrix_cpp(filename,pre_matrix1,pre_matrix2,r);
-    
+    load_data_into_prematrix(reader,pre_matrix1,pre_matrix2,r);
+    test_timer1.stop();
+
     test_timer2.start();
+    
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
     std::sort(pre_matrix2.begin(),pre_matrix2.end(),sort_pre_column);
@@ -482,10 +545,10 @@ namespace phat {
     {
       int n = pre_matrix1.size();
       matrix1.set_num_cols(n);
-      
+      matrix1.grades.resize(n);
       for(int i=0;i<n;i++) {
 	pre_column& pcol = pre_matrix1[i];
-        matrix1.grades.push_back(pcol.grade);
+        matrix1.grades[i]=pcol.grade;
 	matrix1.set_col(i,pcol.boundary);
       }
       matrix1.assign_slave_matrix();
@@ -495,10 +558,10 @@ namespace phat {
     {
       int n = pre_matrix2.size();
       matrix2.set_num_cols(n);
-      
+      matrix2.grades.resize(n);
       for(int i=0;i<n;i++) {
 	pre_column& pcol = pre_matrix2[i];
-        matrix2.grades.push_back(pcol.grade);
+        matrix2.grades[i]=pcol.grade;
 	matrix2.set_col(i,pcol.boundary);
       }
       matrix2.assign_slave_matrix();
@@ -507,8 +570,9 @@ namespace phat {
     }
     test_timer3.stop();
 
-    test_timer4.start();
+
     assign_grade_indices(matrix1,matrix2);
+    test_timer4.start();
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
     }
@@ -517,7 +581,7 @@ namespace phat {
     matrix2.pq_row.resize(matrix2.num_grades_y);
 #endif
     test_timer4.stop();
-
+    test_timer5.stop();
   }
 
   template<typename GradedMatrix>
@@ -803,7 +867,14 @@ namespace phat {
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
     
-    std::set<index> indices_in_kernel;
+    std::vector<bool> indices_in_kernel;
+    indices_in_kernel.resize(M.get_num_cols());
+    for(index i=0;i<M.get_num_cols();i++) {
+      indices_in_kernel[i]=false;
+    }
+
+    //std::set<index> indices_in_kernel;
+
 
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
@@ -826,6 +897,7 @@ namespace phat {
 	  pq.push(i);
 	}
 	//std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+	//test_timer1.resume();
 	while(!pq.empty()) {
 	  index i = pq.top();
 	  // Remove duplicates
@@ -840,23 +912,30 @@ namespace phat {
 	    mingens.get_col(mingens.clearing_info[i],col);
 	    new_cols.push_back(col);
 	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	    indices_in_kernel.insert(i);
+	    indices_in_kernel[i]=true;;
+	    //indices_in_kernel.insert(i);
 	    M.clear(i);
 	  }
 #endif
-
+	  //test_timer3.resume();
 	  M.reduce_column(i,true,true);
-	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
+	  //test_timer3.stop();
+	  //test_timer2.resume();
+	  if(!indices_in_kernel[i] && M.is_empty(i)) {
+	  //if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
 	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
 	    {
 	      std::vector<index> col;
 	      M.slave.get_col(i,col);
 	      new_cols.push_back(col);
 	      new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	      indices_in_kernel.insert(i);
+	      indices_in_kernel[i]=true;
+	      //indices_in_kernel.insert(i);
 	    }
 	  }
+	  //test_timer2.stop();
 	}
+	//test_timer1.stop();
       }
     }
     result.set_num_cols(new_cols.size());
@@ -885,8 +964,12 @@ namespace phat {
     std::vector<Grade> new_grades;
     std::vector<std::vector<index>> new_cols;
 
-    std::set<index> indices_in_kernel;
-
+    std::vector<bool> indices_in_kernel;
+    indices_in_kernel.resize(M.get_num_cols());
+    for(index i=0;i<M.get_num_cols();i++) {
+      indices_in_kernel[i]=false;
+    }
+    
     for(index x = 0; x < M.num_grades_x;x++) {
       for(index y = 0; y < M.num_grades_y;y++) {
 
@@ -905,19 +988,19 @@ namespace phat {
 	assert(start_xy<=start_xy_of_grade);
 	assert(start_xy_of_grade<=end_xy);
 	
-	
-
+	//test_timer3.resume();
 	for(index i = start_xy;i<end_xy;i++) {
 	  M.reduce_column(i,true);
-	  if(M.is_empty(i) && indices_in_kernel.count(i)==0) {
+	  if(!indices_in_kernel[i] && M.is_empty(i)) {
 	    //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
 	    std::vector<index> col;
 	    M.slave.get_col(i,col);
 	    new_cols.push_back(col);
 	    new_grades.push_back(Grade(x,y,M.x_vals[x],M.y_vals[y]));
-	    indices_in_kernel.insert(i);
+	    indices_in_kernel[i]=true;
 	  }
 	}
+	//test_timer3.stop();
 
       }
     }
@@ -935,7 +1018,6 @@ namespace phat {
       slave_col.push_back(i);
       result.slave.set_col(i,slave_col);
     }
-
   }
 
 
@@ -1015,12 +1097,17 @@ namespace phat {
     void minimize(GradedMatrix_& M,GradedMatrix_& result) {
 
 
+    //test_timer1.start();
 #if LAZY_MINIMIZATION
     GradedMatrix_& VVM=M;
 #else    
     GradedMatrix<phat::vector_vector> VVM;
+    
     convert_to_vec_vec(M,VVM);
+
 #endif
+
+    //test_timer1.stop();
 
     typedef std::vector<index> Column;
 
@@ -1031,7 +1118,6 @@ namespace phat {
 
     std::vector<index> cols_to_keep;
     std::vector<Grade> col_grades;
-    //test_timer1.start();
     for(index i=0;i<VVM.get_num_cols();i++) {
       //std::cout << "i=" << i << std::endl;
       while(! VVM.is_empty(i)) {
@@ -1051,11 +1137,13 @@ namespace phat {
 	  //std::cout << "Found removable pair " << p << " " << i << std::endl;
 	  rows_to_delete.insert(p);
 #if !LAZY_MINIMIZATION
+	  test_timer5.resume();
 	  for(index j=i+1;j<VVM.get_num_cols();j++) {
-	    if(contains(VVM,j,p)) {
+	    if(VVM.contains(j,p)) {
 	      VVM.add_to(i,j);
 	    }
 	  }
+	  test_timer5.stop();
 #endif
 	  VVM.pivots[p]=i;
 	  break;
@@ -1065,9 +1153,9 @@ namespace phat {
 	}
       }
     }
-    //test_timer1.stop();
     std::vector<Column> new_cols;
     new_cols.resize(cols_to_keep.size());
+
 
 #if LAZY_MINIMIZATION
     //std::cout << "HERE I AM " << std::endl;
@@ -1097,8 +1185,6 @@ namespace phat {
     }
 #endif
     
-    //test_timer3.start();
-
     index nr = VVM.num_rows;
     //std::cout << "Number of rows of VVM: " << nr << std::endl;
     //std::cout << "Have removed " << rows_to_delete.size() << std::endl;
@@ -1132,7 +1218,6 @@ namespace phat {
     for(int i=0;i<cols_to_keep.size();i++) {
       result.set_col(i,new_cols[i]);
     }
-    //test_timer3.stop();
   }
   
   template<typename GradedMatrix>
