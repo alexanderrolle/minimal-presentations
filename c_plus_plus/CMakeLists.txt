@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+set(CMAKE_BUILD_TYPE Release)
+
 FIND_PACKAGE(OpenMP)
 
 include_directories(phat_mod/include)
