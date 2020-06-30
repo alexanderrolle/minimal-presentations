@@ -8,7 +8,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 FIND_PACKAGE(OpenMP)
 
-include_directories(/home/mkerber/phat_swap_reduction/include)
+include_directories(phat_mod/include)
 
 find_package(Boost REQUIRED timer)
 
