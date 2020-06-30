@@ -22,6 +22,10 @@ from sklearn.metrics.pairwise import euclidean_distances
     
 def function_Rips(points, function_vals, p, file_name):
     
+    function_vals_negative = []
+    for k in function_vals:
+        function_vals_negative.append(-k)
+    
     distances = euclidean_distances(points)
     
     simplices_to_print = []
@@ -30,7 +34,7 @@ def function_Rips(points, function_vals, p, file_name):
 
     for simplex in p_minus_one_simplices:
         simplex_to_print = ""
-        bidegree = bidegree_of_simplex(simplex, function_vals, distances)
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
         for vertex in simplex:
             simplex_to_print += str(vertex)
             simplex_to_print += " "
@@ -44,7 +48,7 @@ def function_Rips(points, function_vals, p, file_name):
 
     for simplex in p_simplices:
         simplex_to_print = ""
-        bidegree = bidegree_of_simplex(simplex, function_vals, distances)
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
         for vertex in simplex:
             simplex_to_print += str(vertex)
             simplex_to_print += " "
@@ -58,7 +62,7 @@ def function_Rips(points, function_vals, p, file_name):
 
     for simplex in p_plus_one_simplices:
         simplex_to_print = ""
-        bidegree = bidegree_of_simplex(simplex, function_vals, distances)
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
         for vertex in simplex:
             simplex_to_print += str(vertex)
             simplex_to_print += " "
@@ -106,13 +110,17 @@ def bidegree_of_simplex(simplex, function_vals, distances):
     
 def function_Rips_FIRep(points, function_vals, p, file_name):
     
+    function_vals_negative = []
+    for k in function_vals:
+        function_vals_negative.append(-k)
+    
     distances = euclidean_distances(points)
     
     p_minus_one_simplices = combinations(range(len(points)), p)
     
     p_minus_one_simplices_list = []
     for simplex in p_minus_one_simplices:
-        p_minus_one_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals, distances)))
+        p_minus_one_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals_negative, distances)))
     p_minus_one_simplices_list.sort(key=lambda x : (x[1][1], x[1][0]))
     
     p_minus_one_simplices_dict = {}
@@ -124,7 +132,7 @@ def function_Rips_FIRep(points, function_vals, p, file_name):
     
     p_simplices_list = []
     for simplex in p_simplices:
-        p_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals, distances)))
+        p_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals_negative, distances)))
     p_simplices_list.sort(key=lambda x : (x[1][1], x[1][0]))
     
     p_simplices_dict = {}
@@ -136,7 +144,7 @@ def function_Rips_FIRep(points, function_vals, p, file_name):
     
     p_plus_one_simplices_list = []
     for simplex in p_plus_one_simplices:
-        p_plus_one_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals, distances)))
+        p_plus_one_simplices_list.append((simplex, bidegree_of_simplex(simplex, function_vals_negative, distances)))
     p_plus_one_simplices_list.sort(key=lambda x : (x[1][1], x[1][0]))
     
 #    p_plus_one_simplices_dict = {}
