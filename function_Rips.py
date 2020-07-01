@@ -21,7 +21,7 @@ from sklearn.metrics.pairwise import euclidean_distances
 # The function returns the number of simplices it computes.
     
 def function_Rips(points, function_vals, p, file_name):
-    
+        
     function_vals_negative = []
     for k in function_vals:
         function_vals_negative.append(-k)
@@ -73,19 +73,91 @@ def function_Rips(points, function_vals, p, file_name):
         simplices_to_print.append(simplex_to_print)
 
     f = open(file_name, "w")
+    print("bifiltration", file=f)
+    print("s", file=f)
+    print("k", file=f)
     for simplex in simplices_to_print:
         print(simplex, file=f)
     f.close()
     
     return(len(simplices_to_print))
     
-def bidegree_of_simplex(simplex, function_vals, distances):
+# The difference between function_Rips and function_Rips_v2
+# is that v2 reindexes the k values so they are integers.    
+    
+def function_Rips_v2(points, function_vals, p, file_name):
+    
+    function_vals_negative = []
+    for k in function_vals:
+        function_vals_negative.append(-k)
+    
+    function_vals_distinct = list(set(function_vals_negative))
+    function_vals_distinct.sort()
+    function_vals_dict = {function_vals_distinct[i] : i for i in range(len(function_vals_distinct))}
+    
+    distances = euclidean_distances(points)
+    
+    simplices_to_print = []
+    
+    p_minus_one_simplices = combinations(range(len(points)), p)
+
+    for simplex in p_minus_one_simplices:
+        simplex_to_print = ""
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
+        for vertex in simplex:
+            simplex_to_print += str(vertex)
+            simplex_to_print += " "
+        simplex_to_print += "; "
+        simplex_to_print += str(bidegree[0])
+        simplex_to_print += " "
+        simplex_to_print += str(function_vals_dict[bidegree[1]])
+        simplices_to_print.append(simplex_to_print)
+        
+    p_simplices = combinations(range(len(points)), p+1)
+
+    for simplex in p_simplices:
+        simplex_to_print = ""
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
+        for vertex in simplex:
+            simplex_to_print += str(vertex)
+            simplex_to_print += " "
+        simplex_to_print += "; "
+        simplex_to_print += str(bidegree[0])
+        simplex_to_print += " "
+        simplex_to_print += str(function_vals_dict[bidegree[1]])
+        simplices_to_print.append(simplex_to_print)
+
+    p_plus_one_simplices = combinations(range(len(points)), p+2)
+
+    for simplex in p_plus_one_simplices:
+        simplex_to_print = ""
+        bidegree = bidegree_of_simplex(simplex, function_vals_negative, distances)
+        for vertex in simplex:
+            simplex_to_print += str(vertex)
+            simplex_to_print += " "
+        simplex_to_print += "; "
+        simplex_to_print += str(bidegree[0])
+        simplex_to_print += " "
+        simplex_to_print += str(function_vals_dict[bidegree[1]])
+        simplices_to_print.append(simplex_to_print)
+
+    f = open(file_name, "w")
+    print("bifiltration", file=f)
+    print("s", file=f)
+    print("k", file=f)
+    for simplex in simplices_to_print:
+        print(simplex, file=f)
+    f.close()
+    
+    return(len(simplices_to_print))
+    
+def bidegree_of_simplex(simplex, function_vals_negative, distances):
     
     simplex_function_vals = []
     for vertex in simplex:
-        simplex_function_vals.append(function_vals[vertex])
+        simplex_function_vals.append(function_vals_negative[vertex])
     
-    k = min(simplex_function_vals)
+    k = max(simplex_function_vals)
     
     
     if len(simplex) == 1:
