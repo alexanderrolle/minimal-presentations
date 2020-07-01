@@ -53,6 +53,87 @@ namespace phat {
     }
   };
 
+  struct Sort_grades {
+    bool operator() (const index_pair& c1, const index_pair& c2) {
+      if(c1.first > c2.first) {
+	return true;
+      }
+      if(c1.first < c2.first) {
+	return false;
+      }
+      return c1.second > c2.second;
+    }
+  };
+
+#if SPARSE_GRID_TRAVERSAL
+  class Grid_scheduler {
+
+  public:
+
+    std::priority_queue<index_pair,std::vector<index_pair>,Sort_grades> grades;
+
+    std::map<index_pair,index_pair> index_range;
+
+    Grid_scheduler() {}
+
+    // It is assumed that columns with the same grade appear in M consecutively
+    template<typename GradedMatrix>
+      Grid_scheduler(GradedMatrix& M) {
+      
+      index_pair last_pair=std::make_pair(-1,-1);
+      index curr_start=-1;
+      for(int i=0;i<M.get_num_cols();i++) {
+	index curr_x=M.grades[i].first_index;
+	index curr_y=M.grades[i].second_index;
+	if(curr_x!=last_pair.first || curr_y !=last_pair.second) {
+	  // New grade
+	  if(curr_start!=-1) {
+	    index_range[last_pair]=std::make_pair(curr_start,i);
+	  }
+	  curr_start=i;
+	  last_pair = std::make_pair(curr_x,curr_y);
+	  grades.push(last_pair);
+	}
+      }
+      if(curr_start!=-1) {
+	index_range[last_pair]=std::make_pair(curr_start,M.get_num_cols());
+      }
+	  
+    }
+
+    bool at_end() {
+      return grades.empty();
+    }
+
+    index_pair next_grade() {
+      index_pair result = grades.top();
+      grades.pop();
+      while(!grades.empty() && grades.top()==result) {
+	grades.pop();
+      }
+      return result;
+    }
+
+    index_pair index_range_at(index x, index y) {
+      auto find_grade = index_range.find(std::make_pair(x,y));
+      if(find_grade==index_range.end()) {
+	return std::make_pair(0,0);
+      }
+      return find_grade->second;
+    }
+
+    void notify(index x,index y) {
+      //std::cout << "Got notified about " << x << " " << y << std::endl;
+      grades.push(std::make_pair(x,y));
+    }
+    
+    // extended_index_range_at not needed, because SMART_REDUCTION is required
+
+    
+
+  };
+#else
+
   class Grid_scheduler {
     
     index_pair _curr_pair;
@@ -66,6 +147,8 @@ namespace phat {
     index num_grades_y;
 
     index num_cols;
+
+    
 
   public:
 
@@ -152,7 +235,7 @@ namespace phat {
       return std::make_pair(start_xy,end_xy);
     }
     
-    // Needed for the original version
+    // Needed for the original version (without SMART_REDUCTION)
     void extended_index_range_at(index x,index y,
 				 index& start_xy,
 				 index& end_xy,
@@ -164,9 +247,13 @@ namespace phat {
       start_xy = start_index_of_pair[0][y];
     }
 
+    
+    void notify(index x,index y) {
+      // Do nothing
+    }
 
   };
-
+#endif // of SPARSE_GRID_TRAVERSAL
 
   template<typename Representation=vector_heap>
     class GradedMatrix  : public boundary_matrix<Representation> {
@@ -286,7 +373,7 @@ namespace phat {
       return true;
     }
 
-    void reduce_column(index i, bool use_slave=false, bool notify_pq=false) {
+    void reduce_column(index i, index_pair& curr_gr, bool use_slave=false, bool notify_pq=false) {
       
       //std::cout << "Reduce " << i << std::endl;
 
@@ -329,6 +416,11 @@ namespace phat {
 	index gr_y_index = this->grades[j].second_index;
 	//std::cout << "SCHEDULING COLUMN FOR LATER " << i << " " << j << " " << this->grades[j].first_index<< " " << gr_y_index << std::endl;
 	this->pq_row[gr_y_index].push(j);
+
+#if SPARSE_GRID_TRAVERSAL
+	index gr_x_index = curr_gr.first;
+	this->grid_scheduler.notify(gr_x_index,gr_y_index);
+#endif
       }
 #endif
       if(p!=-1 && (pivots[p]==-1 || pivots[p]>i)) {
@@ -722,7 +814,7 @@ namespace phat {
     //test_timer1.stop();
     std::cout << "Sparsification" << std::endl;
     //test_timer2.start();
-#if PARALLELIZATION
+#if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
     for(index i=0;i<M1.get_num_cols();i++) {
@@ -882,7 +974,7 @@ namespace phat {
 	}
 	assert(M.grades[i].first_index<=x);
 	assert(M.grades[i].second_index==y);
-	M.reduce_column(i,false,true);
+	M.reduce_column(i,new_grade,false,true);
 	if(!M.is_empty(i) && i>=start_xy&& i<end_xy) {
 	  std::vector<index> col;
 	  M.get_col(i,col);
@@ -949,7 +1041,7 @@ namespace phat {
       assert(start_xy<=start_xy_of_grade);
       assert(start_xy_of_grade<=end_xy);
       for(index i = start_xy;i<end_xy;i++) {
-	M.reduce_column(i);
+	M.reduce_column(i,new_grade);
 	if(!M.is_empty(i) && i>=start_xy_of_grade&& i<end_xy) {
 	  std::vector<index> col;
 	  M.get_col(i,col);
@@ -1030,7 +1122,7 @@ namespace phat {
 	}
 #endif
 	//test_timer3.resume();
-	M.reduce_column(i,true,true);
+	M.reduce_column(i,new_grade,true,true);
 	//test_timer3.stop();
 	//test_timer2.resume();
 	if(!indices_in_kernel[i] && M.is_empty(i)) {
@@ -1099,7 +1191,7 @@ namespace phat {
       
       //test_timer3.resume();
       for(index i = start_xy;i<end_xy;i++) {
-	M.reduce_column(i,true);
+	M.reduce_column(i,new_grade,true);
 	if(!indices_in_kernel[i] && M.is_empty(i)) {
 	  //std::cout << "NEW KERNEL ELEMENT " << i << " Count: " << count << " Grade " << x << " " << y << std::endl;
 	  std::vector<index> col;
@@ -1153,16 +1245,17 @@ namespace phat {
     std::copy(cols.grades.begin(),cols.grades.end(),std::back_inserter(result.grades));
 
     //test_timer4.start();
-#if PARALLELIZATION
+#if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
+    index_pair dummy;
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
       std::vector<index> col;
       cols.get_col(i,col);
       ker.set_col(ker_cols+i,col);
       //std::cout << "reduce" << std::endl;
-      ker.reduce_column(ker_cols+i,true);
+      ker.reduce_column(ker_cols+i,dummy,true);
       //std::cout << "done" << std::endl;
       assert(ker.is_empty(ker_cols+i));
       std::vector<index> new_col;
@@ -1268,7 +1361,7 @@ namespace phat {
 #if LAZY_MINIMIZATION
     //std::cout << "HERE I AM " << std::endl;
     //test_timer2.start();
-#if PARALLELIZATION
+#if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
     for(index k=0;k<cols_to_keep.size();k++) {
