@@ -12,7 +12,7 @@ from sklearn.neighbors import KernelDensity
 import time
 
 # Choose number of points and ambient dimension for point cloud
-num_points = 10
+num_points = 100
 ambient_dimension = 2
 
 # Choose dimension for persistent homology
@@ -22,7 +22,9 @@ homology_dimension = 1
 band = 0.2
 
 # Choose name of file containing the bifiltration
-file_name = "june30_FIRep_10_2_1.txt"
+#file_name_1 = "july1_fR_2.txt"
+#file_name_2 = "july1_fR_2_int.txt"
+file_name_3 = "july1_FIRep_2.txt"
 
 start = time.time()
 
@@ -30,8 +32,9 @@ points = np.random.rand(num_points, ambient_dimension)
 kde = KernelDensity(kernel='gaussian', bandwidth=band).fit(points)
 function_vals = np.exp(kde.score_samples(points))
 
-#number_of_simplices = function_Rips(points, function_vals, homology_dimension, file_name)
-function_Rips_FIRep(points, function_vals, homology_dimension, file_name)
+#number_of_simplices = function_Rips(points, function_vals, homology_dimension, file_name_1)
+#number_of_simplices_2 = function_Rips_v2(points, function_vals, homology_dimension, file_name_2)
+function_Rips_FIRep(points, function_vals, homology_dimension, file_name_3)
 
 end = time.time()
 
