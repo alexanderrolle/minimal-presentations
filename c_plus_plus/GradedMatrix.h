@@ -573,7 +573,8 @@ namespace phat {
 	std::fseek(fp, 0, SEEK_END);
 	data.resize(std::ftell(fp));
 	std::rewind(fp);
-	std::fread(&data[0], 1, data.size(), fp);
+	// Return value is stored t supress compiler warning
+	std::size_t no_read=std::fread(&data[0], 1, data.size(), fp);
 	std::fclose(fp);
       } else {
 	throw(errno);
@@ -1245,10 +1246,10 @@ namespace phat {
     std::copy(cols.grades.begin(),cols.grades.end(),std::back_inserter(result.grades));
 
     //test_timer4.start();
+    index_pair dummy;
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
-    index_pair dummy;
     for(index i=0;i<cols.get_num_cols();i++) {
       //std::cout << "index" << i << std::endl;
       std::vector<index> col;
