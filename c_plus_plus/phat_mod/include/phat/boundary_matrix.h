@@ -28,8 +28,8 @@ namespace phat {
  template< class Representation = bit_tree_pivot_column >
    class boundary_matrix
     {
-        
-    protected:
+    //WAS PROTECTED    
+    public:
         Representation rep;
 
     // interface functions -- actual implementation and complexity depends on chosen @Representation template
