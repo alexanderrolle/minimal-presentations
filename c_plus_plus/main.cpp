@@ -36,6 +36,8 @@
 #error SPARSE_GRID_TRAVERSAL requires SMART_REDUCTION
 #endif
 
+int gl_no_column_additions=0;
+
 #define TIMERS 1
 
 #define SWAP_GRADE 0
@@ -267,6 +269,7 @@ int main(int argc, char** argv) {
 #if TIMERS
   print_timers();
 #endif
+  std::cout << "Total number of column additions: " << gl_no_column_additions << std::endl;
 
   return 0;
   

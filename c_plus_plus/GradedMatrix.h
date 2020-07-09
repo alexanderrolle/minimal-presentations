@@ -403,9 +403,11 @@ namespace phat {
 	//std::cout << "Adding column " << k << std::endl;
 
 	this->add_to(k,i);
-	
+	gl_no_column_additions++;
+
 	if(use_slave) {
 	  slave.add_to(k,i);
+	  gl_no_column_additions++;
 	}
 	p=this->get_max_index(i);
       }
@@ -806,6 +808,7 @@ namespace phat {
 	index j = local_pivots[p];
 	if(j!=-1) {
 	  M1.add_to(j,i);
+	  gl_no_column_additions++;
 	} else {
 	  local_pivots[p]=i;
 	  break;
@@ -832,6 +835,7 @@ namespace phat {
 	assert(j==-1 || M1.get_max_index(j)==p);
 	if(j!=-1) {
 	  M1.add_to(j,i);
+	  gl_no_column_additions++;
 	} else {
 	  col.push_back(p);
 	  M1.remove_max(i);
@@ -1343,6 +1347,7 @@ namespace phat {
 	  for(index j=i+1;j<VVM.get_num_cols();j++) {
 	    if(VVM.contains(j,p)) {
 	      VVM.add_to(i,j);
+	      gl_no_column_additions++;
 	    }
 	  }
 	  test_timer5.stop();
@@ -1352,6 +1357,7 @@ namespace phat {
 	} else {
 	  //std::cout << "add a column" << VVM.pivots[p] << std::endl;
 	  VVM.add_to(VVM.pivots[p],i);
+	  gl_no_column_additions++;
 	}
       }
     }
@@ -1375,6 +1381,7 @@ namespace phat {
 	  VVM.remove_max(i);
 	} else {
 	  VVM.add_to(VVM.pivots[p],i);
+	  gl_no_column_additions++;
 	}
       }
       std::reverse(col.begin(),col.end());
