@@ -25,7 +25,7 @@
 
 
 #ifndef PARALLEL_FOR_LOOPS
-#define PARALLEL_FOR_LOOPS 0
+#define PARALLEL_FOR_LOOPS 1
 #endif
 
 #if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
@@ -40,9 +40,13 @@ int gl_no_column_additions=0;
 
 #define TIMERS 1
 
+#ifndef SWAP_GRADE
 #define SWAP_GRADE 0
+#endif
 
+#ifndef PERTURB
 #define PERTURB 0
+#endif
 
 #if PERTURB
 #include<random>
@@ -122,7 +126,7 @@ int main(int argc, char** argv) {
   overall_timer.start();
 #endif
 
-#if PARALLELIZATION
+#if PARALLEL_FOR_LOOPS
   std::cout << "Execution parralized, max Number of threads: " << omp_get_max_threads() << std::endl;
 #endif
 

@@ -1042,7 +1042,7 @@ namespace phat {
       
       grid.extended_index_range_at(x,y,start_xy,end_xy,start_xy_of_grade);
 	
-      std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " (" << start_xy_of_grade << ") " << end_xy << std::endl;
+      //std::cout << "Min gens for " << x << " " << y << " traverses through index range " << start_xy << " (" << start_xy_of_grade << ") " << end_xy << std::endl;
       assert(start_xy<=start_xy_of_grade);
       assert(start_xy_of_grade<=end_xy);
       for(index i = start_xy;i<end_xy;i++) {
