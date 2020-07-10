@@ -16,6 +16,10 @@ find_package(Boost REQUIRED timer)
 
 set (CMAKE_CXX_FLAGS "-fopenmp")
 
+add_executable(main "main.cpp")
+target_link_libraries(main "-lboost_timer")
+
+
 add_executable(main_rivet "main.cpp")
 target_compile_options(main_rivet PUBLIC -DCHUNK_PREPROCESSING=0 -DSMART_REDUCTION=0 -DSPARSE_GRID_TRAVERSAL=0 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=0 -DPARALLEL_FOR_LOOPS=0 -DSWAP_GRADE=0 -DPERTURB=0)
 target_link_libraries(main_rivet "-lboost_timer")

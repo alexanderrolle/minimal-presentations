@@ -74,6 +74,8 @@ namespace phat {
 
     std::map<index_pair,index_pair> index_range;
 
+    index_pair curr_grade;
+
     Grid_scheduler() {}
 
     // It is assumed that columns with the same grade appear in M consecutively
@@ -98,6 +100,7 @@ namespace phat {
       if(curr_start!=-1) {
 	index_range[last_pair]=std::make_pair(curr_start,M.get_num_cols());
       }
+      curr_grade=std::make_pair(-1,-1);
 	  
     }
 
@@ -111,6 +114,7 @@ namespace phat {
       while(!grades.empty() && grades.top()==result) {
 	grades.pop();
       }
+      curr_grade=result;
       return result;
     }
 
@@ -124,7 +128,9 @@ namespace phat {
 
     void notify(index x,index y) {
       //std::cout << "Got notified about " << x << " " << y << std::endl;
-      grades.push(std::make_pair(x,y));
+      if(curr_grade.first!=x || curr_grade.second!=y) {
+	grades.push(std::make_pair(x,y));
+      }
     }
     
     // extended_index_range_at not needed, because SMART_REDUCTION is required
@@ -452,7 +458,28 @@ namespace phat {
 
   };
 
-  
+
+  template<typename GradedMatrix>
+    void check_grade_sanity(GradedMatrix& M) {
+    
+    for(index i=0;i<M.get_num_cols();i++) {
+      Grade& col_gr = M.grades[i];
+      std::vector<index> col;
+      M.get_col(i,col);
+      for(index j=0;j<col.size();j++) {
+	Grade& row_gr = M.row_grades[col[j]];
+	if(row_gr.first_index>col_gr.first_index || row_gr.second_index>col_gr.second_index) {
+	  std::cout << "Bad grading at: " << col[j] << "( " << row_gr.first_index << ", " << row_gr.second_index << ") " << i << "( " << col_gr.first_index << ", " << col_gr.second_index << ")" << std::endl;
+	  std::exit(1);
+	}
+	assert(row_gr.first_index<=col_gr.first_index);
+	assert(row_gr.second_index<=col_gr.second_index);
+      }
+    }
+    
+
+  }
+
   
   template<typename GradedMatrix>
     void assign_index_range(GradedMatrix& M) {
@@ -780,6 +807,11 @@ namespace phat {
     matrix1.pq_row.resize(matrix1.num_grades_y);
     matrix2.pq_row.resize(matrix2.num_grades_y);
 #endif
+
+#if !NDEBUG
+    check_grade_sanity(matrix1);
+#endif
+
   }
 
   template<typename GradedMatrix>
@@ -960,6 +992,12 @@ namespace phat {
 	pq.push(i);
       }
       //std::cout << "After adding, pq of row has size " << pq.size() << std::endl;
+      /*
+      if(!pq.empty()) {
+	std::cout << "Min gens for " << x << " " << y << " has to do work " << pq.size() << " grade cols: " << end_xy-start_xy << std::endl;
+
+      }
+      */
       while(!pq.empty()) {
 	index i = pq.top();
 	//std::cout << "Index " << i << std::endl;
@@ -1261,6 +1299,9 @@ namespace phat {
     // Assign row grades
     result.num_rows=ker_cols;
     std::copy(ker.grades.begin(),ker.grades.end(),std::back_inserter(result.row_grades));
+#if !NDEBUG
+    check_grade_sanity(result);
+#endif
   }
 
   template<typename Rep>
@@ -1315,7 +1356,6 @@ namespace phat {
     std::vector<index> cols_to_keep;
     std::vector<Grade> col_grades;
     for(index i=0;i<VVM.get_num_cols();i++) {
-      //std::cout << "i=" << i << std::endl;
       while(! VVM.is_empty(i)) {
 	
 	index col_grade_x = VVM.grades[i].first_index;
@@ -1330,7 +1370,7 @@ namespace phat {
 	  break;
 	}
 	if(VVM.pivots[p]==-1) {
-	  //std::cout << "Found removable pair " << p << " " << i << std::endl;
+	  //std::cout << "Found removable pair " << p << "( " <<  VVM.row_grades[p].first_index << " " << VVM.row_grades[p].second_index << " )" << " " << i << "( " << VVM.grades[i].first_index << " " << VVM.grades[i].second_index << " )" << std::endl;
 	  rows_to_delete.insert(p);
 #if !LAZY_MINIMIZATION
 	  for(index j=i+1;j<VVM.get_num_cols();j++) {
@@ -1348,6 +1388,7 @@ namespace phat {
 	  gl_no_column_additions++;
 	}
       }
+      assert(! VVM.is_empty(i));
     }
     std::vector<Column> new_cols;
     new_cols.resize(cols_to_keep.size());
@@ -1400,6 +1441,7 @@ namespace phat {
     // Update columns using re-index map
     
     for(index i=0;i<cols_to_keep.size();i++) {
+      //std::cout << "Iterating throgh column " << cols_to_keep[i] << std::endl;
       Column& col = new_cols[i];
       for(int j=0;j<col.size();j++) {
 	//std::cout << "Lookup " << col[j] << ", count=" << index_map.count(col[j]) << std::endl;

@@ -1,5 +1,5 @@
 #ifndef CHUNK_PREPROCESSING
-#define CHUNK_PREPROCESSING 1
+#define CHUNK_PREPROCESSING 0
 #endif
 
 #ifndef SMART_REDUCTION
@@ -7,7 +7,7 @@
 #endif
 
 #ifndef SPARSE_GRID_TRAVERSAL
-#define SPARSE_GRID_TRAVERSAL 1
+#define SPARSE_GRID_TRAVERSAL 0
 #endif
 
 #ifndef CLEARING
@@ -20,12 +20,12 @@
 
 
 #ifndef LAZY_MINIMIZATION
-#define LAZY_MINIMIZATION 1
+#define LAZY_MINIMIZATION 0
 #endif
 
 
 #ifndef PARALLEL_FOR_LOOPS
-#define PARALLEL_FOR_LOOPS 1
+#define PARALLEL_FOR_LOOPS 0
 #endif
 
 #if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
@@ -120,6 +120,20 @@ int main(int argc, char** argv) {
     std::cerr << "Input file?" << std::endl;
     std::exit(1);
   }
+
+  if(std::string(argv[1])=="-c") {
+    std::cerr << "Running in check only mode" << std::endl;
+    if(argc<3) {
+      std::cerr << "Input file?" << std::endl;
+      std::exit(1);
+    }
+    GrMat GM1,GM2;
+    create_matrix_from_firep(argv[2],GM1,GM2);
+    check_grade_sanity(GM1);
+    std::cerr << "Input is valid, exiting..." << std::endl;
+    std::exit(0);
+  }
+
 
 #if TIMERS
   initialize_timers();
@@ -245,6 +259,8 @@ int main(int argc, char** argv) {
 #if TIMERS
   reparam_timer.stop();
 #endif
+
+  std::cout << "Resulting semi-minimal presentation has " << semi_min_rep.get_num_cols() << " columns and " << semi_min_rep.num_rows << " rows" << std::endl;
 
   //semi_min_rep.print(true,false);
 
