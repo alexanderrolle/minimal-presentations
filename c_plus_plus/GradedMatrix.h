@@ -715,7 +715,6 @@ namespace phat {
 				  Matrix& matrix1, 
 				  Matrix& matrix2) {
 
-    test_timer5.start();
     std::vector<pre_column> pre_matrix1, pre_matrix2;
     int r;
     std::cout << "Loading data into string..." << std::flush;
@@ -723,9 +722,6 @@ namespace phat {
     std::cout << "done" << std::endl;
 
     load_data_into_prematrix(reader,pre_matrix1,pre_matrix2,r);
-    test_timer1.stop();
-
-    test_timer2.start();
     
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
@@ -744,8 +740,6 @@ namespace phat {
       std::sort(pre_matrix1[i].boundary.begin(),
 		pre_matrix1[i].boundary.end());
     }
-    test_timer2.stop();
-    test_timer3.start();
     {
       int n = pre_matrix1.size();
       matrix1.set_num_cols(n);
@@ -772,7 +766,6 @@ namespace phat {
       matrix2.num_rows=r;
       matrix2.assign_pivots();
     }
-    test_timer3.stop();
 
 
     assign_grade_indices(matrix1,matrix2);
@@ -780,7 +773,6 @@ namespace phat {
     matrix1.grid_scheduler=Grid_scheduler(matrix1);
     matrix2.grid_scheduler=Grid_scheduler(matrix2);
 #endif
-    test_timer4.start();
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
     }
@@ -788,8 +780,6 @@ namespace phat {
     matrix1.pq_row.resize(matrix1.num_grades_y);
     matrix2.pq_row.resize(matrix2.num_grades_y);
 #endif
-    test_timer4.stop();
-    test_timer5.stop();
   }
 
   template<typename GradedMatrix>
@@ -1343,14 +1333,12 @@ namespace phat {
 	  //std::cout << "Found removable pair " << p << " " << i << std::endl;
 	  rows_to_delete.insert(p);
 #if !LAZY_MINIMIZATION
-	  test_timer5.resume();
 	  for(index j=i+1;j<VVM.get_num_cols();j++) {
 	    if(VVM.contains(j,p)) {
 	      VVM.add_to(i,j);
 	      gl_no_column_additions++;
 	    }
 	  }
-	  test_timer5.stop();
 #endif
 	  VVM.pivots[p]=i;
 	  break;
