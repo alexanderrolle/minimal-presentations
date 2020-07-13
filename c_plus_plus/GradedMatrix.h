@@ -1309,6 +1309,10 @@ namespace phat {
       slave_col.push_back(i);
       result.slave.set_col(i,slave_col);
     }
+    result.num_grades_x=M.num_grades_x;
+    result.num_grades_y=M.num_grades_y;
+    std::copy(M.x_vals.begin(),M.x_vals.end(),std::back_inserter(result.x_vals));
+    std::copy(M.y_vals.begin(),M.y_vals.end(),std::back_inserter(result.y_vals));
   }
 
 
@@ -1357,7 +1361,12 @@ namespace phat {
     // Assign row grades
     result.num_rows=ker_cols;
     std::copy(ker.grades.begin(),ker.grades.end(),std::back_inserter(result.row_grades));
-    assign_grade_indices(result);
+    
+    // We should probably trim here, or later for the minimized matrix
+    result.num_grades_x=ker.num_grades_x;
+    result.num_grades_y=ker.num_grades_y;
+    std::copy(ker.x_vals.begin(),ker.x_vals.end(),std::back_inserter(result.x_vals));
+    std::copy(ker.y_vals.begin(),ker.y_vals.end(),std::back_inserter(result.y_vals));
 #if !NDEBUG
     check_grade_sanity(result);
 #endif
@@ -1422,6 +1431,9 @@ namespace phat {
 	index p = VVM.get_max_index(i);
 	index row_grade_x = VVM.row_grades[p].first_index;
 	index row_grade_y = VVM.row_grades[p].second_index;
+	
+	//std::cout << "Grades: " << col_grade_x << " " << col_grade_y <<  " -- " <<  row_grade_x << " " << row_grade_y << std::endl;
+
 	//std::cout << "Pivot is " <<  p << std::endl;
 	if(col_grade_x!=row_grade_x || col_grade_y!=row_grade_y) {
 	  cols_to_keep.push_back(i);
@@ -1516,6 +1528,7 @@ namespace phat {
     for(int i=0;i<cols_to_keep.size();i++) {
       result.set_col(i,new_cols[i]);
     }
+    // We should trim the grades here
     result.num_grades_x = M.num_grades_x;
     result.num_grades_y = M.num_grades_y;
     std::copy(M.x_vals.begin(),M.x_vals.end(),std::back_inserter(result.x_vals));
@@ -1621,7 +1634,13 @@ namespace phat {
     out << std::endl;
     out << "y-grades" << std::endl;
     for(int i=0;i<M.num_grades_y;i++) {
+      #if USE_DOUBLE
       out << M.y_vals[i] << std::endl;
+#else
+      Coordinate& c = M.y_vals[i];
+      boost::multiprecision::cpp_rational to_print = c.convert_to<boost::multiprecision::cpp_rational>();
+      out << to_print << std::endl;
+#endif
     }
     out << std::endl;
     
