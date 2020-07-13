@@ -17,7 +17,7 @@ namespace phat {
 
   typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
 
-#define USE_DOUBLE 0
+#define USE_DOUBLE 1
 
 #if USE_DOUBLE
 
@@ -1246,7 +1246,10 @@ namespace phat {
       slave_col.push_back(i);
       result.slave.set_col(i,slave_col);
     }
-
+    result.num_grades_x=M.num_grades_x;
+    result.num_grades_y=M.num_grades_y;
+    std::copy(M.x_vals.begin(),M.x_vals.end(),std::back_inserter(result.x_vals));
+    std::copy(M.y_vals.begin(),M.y_vals.end(),std::back_inserter(result.y_vals));
   }
 
 
@@ -1634,7 +1637,7 @@ namespace phat {
     out << std::endl;
     out << "y-grades" << std::endl;
     for(int i=0;i<M.num_grades_y;i++) {
-      #if USE_DOUBLE
+#if USE_DOUBLE
       out << M.y_vals[i] << std::endl;
 #else
       Coordinate& c = M.y_vals[i];
