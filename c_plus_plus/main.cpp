@@ -28,6 +28,14 @@
 #define PARALLEL_FOR_LOOPS 0
 #endif
 
+// The reading from input uses strtok_r as a thread-save
+// version of strtok. If this function is not enabled,
+// that part of code is not parallelized, which results
+// in a slight performance penalty
+#ifndef STRINGTOK_R_AVAILABLE
+#define STRINGTOK_R_AVAILABLE 1
+#endif
+
 #if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
 #error CLEARING and  MIN_GENS_AND_KER_BASIS_IN_PARALLEL cannot both be enabled
 #endif
@@ -180,6 +188,10 @@ int main(int argc, char** argv) {
   //test_timer1.stop();
   std::cout << "done" << std::endl;
 
+  preGM1=GrMat();
+  preGM2=GrMat();
+  
+
 #if TIMERS
   chunk_timer.stop();
 #endif
@@ -248,6 +260,9 @@ int main(int argc, char** argv) {
   std::cout << "done" << std::endl;
 #endif
 
+  GM1=GrMat();
+  GM2=GrMat();
+
   GrMat semi_min_rep;
 
 #if TIMERS
@@ -261,6 +276,8 @@ int main(int argc, char** argv) {
 #endif
 
   std::cout << "Resulting semi-minimal presentation has " << semi_min_rep.get_num_cols() << " columns and " << semi_min_rep.num_rows << " rows" << std::endl;
+
+  MG=GrMat();
 
   //semi_min_rep.print(true,false);
 

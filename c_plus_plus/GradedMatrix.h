@@ -47,11 +47,12 @@ namespace phat {
   }
 
 #else
+  // Using slow boost types
   typedef boost::multiprecision::cpp_dec_float_100 Coordinate;
   
   Coordinate from_string(char* str) {
     //std::cout << "Converting " << str << " to mpq_class" << std::endl;
-    boost::multiprecision::cpp_dec_float_100 result(str);
+    Coordinate result(str);
     return result;
   }
 
@@ -704,18 +705,37 @@ namespace phat {
     std::default_random_engine re;
 #endif
     pre_matrix.resize(n);
-    std::string line;
+    std::vector<std::string> lines;
+    lines.resize(n);
+    //std::string line;
+    for(int i=0;i<n;i++) {
+
+      lines[i]=reader.next_line();
+    }
+#if STRINGTOK_R_AVAILABLE && PARALLEL_FOR_LOOPS
+#pragma omp parallel for schedule(guided,1)
+#endif
     for(int i=0;i<n;i++) {
       pre_column& curr = pre_matrix[i];
       curr.idx=i;
-      line=reader.next_line();
-      char* token = strtok((char*)line.c_str()," ");
+      char* line = (char*)lines[i].c_str();
+#if STRINGTOK_R_AVAILABLE
+      char* saveptr;
+      char* token = strtok_r(line," ",&saveptr);
+#else
+      char* token = strtok(line," ");
+#endif
+      
       curr.grade.first_val = from_string(token);
       //std::cout << "value: " <<  curr.grade.first_val << std::endl;
 #if PERTURB
       curr.grade.first_val+=sign*unif(re);
 #endif
+#if STRINGTOK_R_AVAILABLE
+      token = strtok_r(NULL," ",&saveptr);
+#else
       token = strtok(NULL," ");
+#endif
       curr.grade.second_val = from_string(token);
 #if PERTURB
       curr.grade.second_val+=sign*unif(re);
@@ -723,18 +743,25 @@ namespace phat {
 #if SWAP_GRADE
       std::swap(curr.grade.first_val,curr.grade.second_val);
 #endif
+#if STRINGTOK_R_AVAILABLE
+      token = strtok_r(NULL," ",&saveptr);
+#else
       token = strtok(NULL," ");
+#endif
       if(strcmp(token,";")) {
 	std::cerr << "Semicolon missing" << std::endl;
       }
       std::vector<index> indices;
+#if STRINGTOK_R_AVAILABLE
+      while(token = strtok_r(NULL," ",&saveptr) ) {
+#else
       while(token = strtok(NULL," ") ) {
+#endif
 	curr.boundary.push_back(atoi(token));
       }
       std::sort(curr.boundary.begin(),curr.boundary.end());
       //std::cout << "Read " << indices.size() << " indices" << std::endl;
     }
-
 #else
     std::string line,next;           
     for(int i=0;i<n;i++) {
@@ -799,15 +826,17 @@ namespace phat {
     void create_matrix_from_firep(char* filename, 
 				  Matrix& matrix1, 
 				  Matrix& matrix2) {
-
+    test_timer1.resume();
     std::vector<pre_column> pre_matrix1, pre_matrix2;
     int r;
     std::cout << "Loading data into string..." << std::flush;
     File_reader reader(filename);
     std::cout << "done" << std::endl;
-
+    test_timer1.stop();
+    test_timer2.resume();
     load_data_into_prematrix(reader,pre_matrix1,pre_matrix2,r);
-    
+    test_timer2.stop();
+    test_timer3.resume();
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
     std::sort(pre_matrix2.begin(),pre_matrix2.end(),sort_pre_column);
@@ -824,11 +853,17 @@ namespace phat {
       }
       std::sort(pre_matrix1[i].boundary.begin(),
 		pre_matrix1[i].boundary.end());
-    }
+    } 
+    test_timer3.stop();
+    test_timer4.resume();
     {
       int n = pre_matrix1.size();
       matrix1.set_num_cols(n);
       matrix1.grades.resize(n);
+      
+#if PARALLEL_FOR_LOOPS
+#pragma omp parallel for schedule(guided,1)
+#endif
       for(int i=0;i<n;i++) {
 	pre_column& pcol = pre_matrix1[i];
         matrix1.grades[i]=pcol.grade;
@@ -842,6 +877,9 @@ namespace phat {
       int n = pre_matrix2.size();
       matrix2.set_num_cols(n);
       matrix2.grades.resize(n);
+#if PARALLEL_FOR_LOOPS
+#pragma omp parallel for schedule(guided,1)
+#endif
       for(int i=0;i<n;i++) {
 	pre_column& pcol = pre_matrix2[i];
         matrix2.grades[i]=pcol.grade;
@@ -851,9 +889,10 @@ namespace phat {
       matrix2.num_rows=r;
       matrix2.assign_pivots();
     }
-
-
+    test_timer4.stop();
+    test_timer5.resume();
     assign_grade_indices(matrix1,matrix2);
+
 #if !CHUNK_PREPROCESSING
     matrix1.grid_scheduler=Grid_scheduler(matrix1);
     matrix2.grid_scheduler=Grid_scheduler(matrix2);
@@ -869,7 +908,7 @@ namespace phat {
 #if !NDEBUG
     check_grade_sanity(matrix1);
 #endif
-
+    test_timer5.stop();
   }
 
   template<typename GradedMatrix>
