@@ -8,20 +8,66 @@
 #include <cstdio>
 #include <cerrno>
 
+#include <boost/multiprecision/cpp_dec_float.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
+
 namespace phat {
 
   typedef std::pair<index,index> index_pair;
 
   typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
 
+#define USE_DOUBLE 0
+
+#if USE_DOUBLE
+
+  typedef double Coordinate;
+
+  Coordinate from_string(char* str) {
+    
+    return atof(str);
+    
+  }
+#else
+  
+#if 0
+
+  // This seems to work, but it is infintiely slow
+
+  // For precise comparison with Rivet output, this needs to be used
+  typedef boost::multiprecision::cpp_rational Coordinate;
+  
+  Coordinate from_string(char* str) {
+    //std::cout << "Converting " << str << " to mpq_class" << std::endl;
+    boost::multiprecision::cpp_dec_float_100 dec_f(str);
+    //std::cout << "cpp_dec: " << dec_f << std::endl;
+    Coordinate result = dec_f.convert_to<boost::multiprecision::cpp_rational>();
+    //std::cout << "Converted " << str << " to " << result << std::endl;
+    return result;
+  }
+
+#else
+  typedef boost::multiprecision::cpp_dec_float_100 Coordinate;
+  
+  Coordinate from_string(char* str) {
+    //std::cout << "Converting " << str << " to mpq_class" << std::endl;
+    boost::multiprecision::cpp_dec_float_100 result(str);
+    return result;
+  }
+
+#endif  
+
+
+#endif // of USE_DOUBLE
+
   struct Grade {
-    double first_val;
+    Coordinate first_val;
     index first_index;
-    double second_val;
+    Coordinate second_val;
     index second_index;
     Grade() {}
-    Grade(double x, double y) : first_val(x), second_val(y) {}
-    Grade(index ind_x, index ind_y, double val_x, double val_y) : first_val(val_x), first_index(ind_x), second_val(val_y), second_index(ind_y) {}
+    Grade(Coordinate& x, Coordinate& y) : first_val(x), second_val(y) {}
+    Grade(index ind_x, index ind_y, Coordinate& val_x, Coordinate& val_y) : first_val(val_x), first_index(ind_x), second_val(val_y), second_index(ind_y) {}
     Grade(const Grade& other) : first_val(other.first_val), first_index(other.first_index),
 				second_val(other.second_val), second_index(other.second_index) {}
     bool operator== (const Grade& other) {
@@ -266,7 +312,7 @@ namespace phat {
     
     public:
 
-    std::vector<double> x_vals,y_vals;
+    std::vector<Coordinate> x_vals,y_vals;
 
     index num_grades_x;
     index num_grades_y;
@@ -535,9 +581,13 @@ namespace phat {
       return;
     }
     
-    std::unordered_map<double,index> val_to_index_x, val_to_index_y;
+#if USE_DOUBLE
+    std::unordered_map<Coordinate,index> val_to_index_x, val_to_index_y;
+#else
+    std::map<Coordinate,index> val_to_index_x, val_to_index_y;
+#endif
     
-    std::vector<double> x_vals,y_vals;
+    std::vector<Coordinate> x_vals,y_vals;
     
     for(int i=0;i<n1;i++) {
       x_vals.push_back(M1.grades[i].first_val);
@@ -587,6 +637,13 @@ namespace phat {
     
     std::cout << "n1=" << n1 << std::endl;
     std::cout << "n2=" << n2 << std::endl;
+  }
+
+  template<typename GradedMatrix>
+    void assign_grade_indices(GradedMatrix& M1) {
+
+    GradedMatrix dummy;
+    assign_grade_indices(M1,dummy);
   }
 
   struct File_reader {
@@ -653,12 +710,13 @@ namespace phat {
       curr.idx=i;
       line=reader.next_line();
       char* token = strtok((char*)line.c_str()," ");
-      curr.grade.first_val = atof(token);
+      curr.grade.first_val = from_string(token);
+      //std::cout << "value: " <<  curr.grade.first_val << std::endl;
 #if PERTURB
       curr.grade.first_val+=sign*unif(re);
 #endif
       token = strtok(NULL," ");
-      curr.grade.second_val = atof(token);
+      curr.grade.second_val = from_string(token);
 #if PERTURB
       curr.grade.second_val+=sign*unif(re);
 #endif
@@ -682,7 +740,7 @@ namespace phat {
     for(int i=0;i<n;i++) {
       std::getline(instr,line);
       std::stringstream sstr(line);
-      double x,y;
+      Coordinate x,y;
       sstr >> x >> y;
 #if SWAP_GRADE
       Grade grade(y,x);
@@ -1299,6 +1357,7 @@ namespace phat {
     // Assign row grades
     result.num_rows=ker_cols;
     std::copy(ker.grades.begin(),ker.grades.end(),std::back_inserter(result.row_grades));
+    assign_grade_indices(result);
 #if !NDEBUG
     check_grade_sanity(result);
 #endif
@@ -1457,6 +1516,10 @@ namespace phat {
     for(int i=0;i<cols_to_keep.size();i++) {
       result.set_col(i,new_cols[i]);
     }
+    result.num_grades_x = M.num_grades_x;
+    result.num_grades_y = M.num_grades_y;
+    std::copy(M.x_vals.begin(),M.x_vals.end(),std::back_inserter(result.x_vals));
+    std::copy(M.y_vals.begin(),M.y_vals.end(),std::back_inserter(result.y_vals));
   }
   
   template<typename GradedMatrix>
@@ -1543,19 +1606,25 @@ namespace phat {
     void print_in_rivet_format(GradedMatrix& M,ofstr& out) {
 
     convert_to_colex_order(M);
-
-    /*
+    
     out << "x-grades" << std::endl;
     for(index i=0;i<M.num_grades_x;i++) {
+#if USE_DOUBLE
       out << M.x_vals[i] << std::endl;
+#else
+      Coordinate& c = M.x_vals[i];
+      boost::multiprecision::cpp_rational to_print = c.convert_to<boost::multiprecision::cpp_rational>();
+      out << to_print << std::endl;
+#endif
+      
     }
     out << std::endl;
     out << "y-grades" << std::endl;
-    for(int i=0;i<M.num_grades_x;i++) {
+    for(int i=0;i<M.num_grades_y;i++) {
       out << M.y_vals[i] << std::endl;
     }
     out << std::endl;
-    */
+    
     out << "MINIMAL PRESENTATION:" << std::endl;
     out << "Number of rows:" << M.num_rows << std::endl;
     out << "Row bigrades:" << std::endl;
