@@ -17,7 +17,7 @@ namespace phat {
 
   typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
 
-#define USE_DOUBLE 1
+#define USE_DOUBLE 0
 
 #if USE_DOUBLE
 
@@ -826,23 +826,22 @@ namespace phat {
     void create_matrix_from_firep(char* filename, 
 				  Matrix& matrix1, 
 				  Matrix& matrix2) {
-    test_timer1.resume();
     std::vector<pre_column> pre_matrix1, pre_matrix2;
     int r;
     std::cout << "Loading data into string..." << std::flush;
     File_reader reader(filename);
     std::cout << "done" << std::endl;
+    test_timer1.resume();
+    load_data_into_prematrix(reader,pre_matrix1,pre_matrix2,r);
     test_timer1.stop();
     test_timer2.resume();
-    load_data_into_prematrix(reader,pre_matrix1,pre_matrix2,r);
-    test_timer2.stop();
-    test_timer3.resume();
     Sort_pre_column<pre_column> sort_pre_column;
     std::sort(pre_matrix1.begin(),pre_matrix1.end(),sort_pre_column);
     std::sort(pre_matrix2.begin(),pre_matrix2.end(),sort_pre_column);
     std::vector<index> re_index;
     re_index.resize(pre_matrix2.size());
-    
+    test_timer2.stop();
+    test_timer3.resume();
     for(index i=0;i<pre_matrix2.size();i++) {
       re_index[pre_matrix2[i].idx]=i;
     }
@@ -892,7 +891,7 @@ namespace phat {
     test_timer4.stop();
     test_timer5.resume();
     assign_grade_indices(matrix1,matrix2);
-
+    test_timer5.stop();
 #if !CHUNK_PREPROCESSING
     matrix1.grid_scheduler=Grid_scheduler(matrix1);
     matrix2.grid_scheduler=Grid_scheduler(matrix2);
@@ -908,7 +907,7 @@ namespace phat {
 #if !NDEBUG
     check_grade_sanity(matrix1);
 #endif
-    test_timer5.stop();
+
   }
 
   template<typename GradedMatrix>

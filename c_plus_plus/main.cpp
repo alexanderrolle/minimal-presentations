@@ -1,5 +1,5 @@
 #ifndef CHUNK_PREPROCESSING
-#define CHUNK_PREPROCESSING 0
+#define CHUNK_PREPROCESSING 1
 #endif
 
 #ifndef SMART_REDUCTION
@@ -7,7 +7,7 @@
 #endif
 
 #ifndef SPARSE_GRID_TRAVERSAL
-#define SPARSE_GRID_TRAVERSAL 0
+#define SPARSE_GRID_TRAVERSAL 1
 #endif
 
 #ifndef CLEARING
@@ -25,7 +25,7 @@
 
 
 #ifndef PARALLEL_FOR_LOOPS
-#define PARALLEL_FOR_LOOPS 0
+#define PARALLEL_FOR_LOOPS 1
 #endif
 
 // The reading from input uses strtok_r as a thread-save
