@@ -10,6 +10,7 @@
 #include <cassert>
 #include <unordered_map>
 #include <limits>
+#include <iomanip>
 
 using namespace std;
 
@@ -209,7 +210,7 @@ void print_firep(vector<column>& v) {
    for(auto it = v.begin() ; it!=v.end() ; it++)
    {
      if(it->dim==2) {
-       cout << it->value[0] << " " << it->value[1] << " ; ";
+       cout << fixed << setprecision(12) << it->value[0] << " " <<fixed << setprecision(12) << it->value[1] << " ; ";
        priority_queue <entry, vector<entry>, compareEntry> g = it->boundary;
        vector<int> new_entries;
        while (!g.empty()) {
