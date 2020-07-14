@@ -138,6 +138,8 @@ int main(int argc, char** argv) {
     GrMat GM1,GM2;
     create_matrix_from_firep(argv[2],GM1,GM2);
     check_grade_sanity(GM1);
+    check_boundaries(GM1,"first");
+    check_boundaries(GM2,"second");
     std::cerr << "Input is valid, exiting..." << std::endl;
     std::exit(0);
   }

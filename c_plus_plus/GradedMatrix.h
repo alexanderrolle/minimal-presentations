@@ -428,7 +428,6 @@ namespace phat {
 
     void reduce_column(index i, index_pair& curr_gr, bool use_slave=false, bool notify_pq=false) {
       
-      //std::cout << "Reduce " << i << std::endl;
 
       /*
       std::cout << "Pivots vector: " << std::endl;
@@ -437,14 +436,7 @@ namespace phat {
       }
       */
 
-      /*
-      std::vector<index> col;
-      this->get_col(i,col);
-      for(int i=0;i<col.size();i++) {
-	std::cout << col[i] << " ";
-      }
-      std::cout << std::endl;
-      */
+	
 
       index p = this->get_max_index(i);
       
@@ -454,6 +446,7 @@ namespace phat {
 	index k = pivots[p];
 
 	//std::cout << "Adding column " << k << std::endl;
+	
 
 	this->add_to(k,i);
 	gl_no_column_additions++;
@@ -505,6 +498,20 @@ namespace phat {
 
   };
 
+
+  template<typename GradedMatrix>
+    void check_boundaries(GradedMatrix& M, std::string msg) {
+    for(index i=0;i<M.get_num_cols();i++) {
+      std::vector<index> col;
+      M.get_col(i,col);
+      for(index j=1;j<col.size();j++) {
+	if(col[j-1]>=col[j]) {
+	  std::cout << "Bad boundary " << col[j-1] << " " << col[j] << " at column " << i << "(" << msg << " matrix)" << std::endl;
+	  std::exit(1);
+	}
+      }
+    }
+  }
 
   template<typename GradedMatrix>
     void check_grade_sanity(GradedMatrix& M) {
@@ -1217,6 +1224,8 @@ namespace phat {
       index x = new_grade.first;
       index y = new_grade.second;
 
+      //std::cout << "At grade " << x << " " << y << std::endl;
+      
       PQ& pq = M.pq_row[y];
       
       index_pair range_xy = grid.index_range_at(x,y);
@@ -1233,6 +1242,7 @@ namespace phat {
       //test_timer1.resume();
       while(!pq.empty()) {
 	index i = pq.top();
+	//std::cout << "next top" << i << std::endl;
 	// Remove duplicates
 	while(!pq.empty() && i==pq.top()) {
 	  pq.pop();
