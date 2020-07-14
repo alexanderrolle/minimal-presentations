@@ -11,21 +11,69 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
+#include<gmpxx.h>
+
 namespace phat {
 
   typedef std::pair<index,index> index_pair;
 
   typedef std::priority_queue<index,std::vector<index>,std::greater<index>> PQ;
 
-#define USE_DOUBLE 0
+  // This map is artificial, but needed in order to produce the rational representation as rivet.
+  std::unordered_map<double,std::string> double_map;
+
+  mpq_class rat_representation(double d) {
+    auto it = double_map.find(d);
+    if(it==double_map.end()) {
+      std::cout << "DOUBLE " << d << " not found" << std::endl;
+      std::exit(1);
+    }
+    const char* str = it->second.c_str();
+    //std::cout << "Converting " << str << std::endl;
+    int sign=+1;
+    int start=0;
+    if(str[0]=='-') {
+      start++;
+      sign=-1;
+    }
+    int n = strlen(str);
+    mpz_class num(0), denom(1);
+    bool dp_detected=false;
+    for(int i = start;i<n;i++) {
+      if(str[i]=='.') {
+	dp_detected=true;
+      } else {
+	int digit = (int)str[i]-48;
+	num=10*num+digit;
+	if(dp_detected) {
+	  denom*=10;
+	}
+      }
+    }
+    mpq_class result(num*sign,denom);
+    result.canonicalize();
+    return result;
+  }
+
+
+  // Note If USE_DOUBLE is switched off, a boost number type is used which
+  // in principle results in more robust code. However, we experienced
+  // problems with that code (when converting the float type into a
+  // rational type), so we represent the grade coordinates with doubles,
+  // but store the exact input string as well to be able to convert it
+  // to a raional later (using rationals throughout yields in a performance
+  // penalty)
+#define USE_DOUBLE 1
 
 #if USE_DOUBLE
 
   typedef double Coordinate;
 
   Coordinate from_string(char* str) {
-    
-    return atof(str);
+    double result = atof(str);
+    double_map[result]=std::string(str);
+    //std::cout << "Mapping " << result << " to " << str << std::endl;
+    return result;
     
   }
 #else
@@ -1674,7 +1722,7 @@ namespace phat {
     out << "x-grades" << std::endl;
     for(index i=0;i<M.num_grades_x;i++) {
 #if USE_DOUBLE
-      out << M.x_vals[i] << std::endl;
+      out << rat_representation(M.x_vals[i]) << std::endl;
 #else
       Coordinate& c = M.x_vals[i];
       boost::multiprecision::cpp_rational to_print = c.convert_to<boost::multiprecision::cpp_rational>();
@@ -1686,7 +1734,7 @@ namespace phat {
     out << "y-grades" << std::endl;
     for(int i=0;i<M.num_grades_y;i++) {
 #if USE_DOUBLE
-      out << M.y_vals[i] << std::endl;
+      out << rat_representation(M.y_vals[i]) << std::endl;
 #else
       Coordinate& c = M.y_vals[i];
       boost::multiprecision::cpp_rational to_print = c.convert_to<boost::multiprecision::cpp_rational>();
