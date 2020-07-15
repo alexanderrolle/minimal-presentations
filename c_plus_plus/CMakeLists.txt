@@ -8,6 +8,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 set(CMAKE_BUILD_TYPE Release)
 
+#set(CMAKE_CXX_COMPILER g++-8)
+
 FIND_PACKAGE(OpenMP)
 
 include_directories(phat_mod/include)

@@ -32,8 +32,10 @@
 // version of strtok. If this function is not enabled,
 // that part of code is not parallelized, which results
 // in a slight performance penalty
+//
+// Disabled, because it causes problems on server... 
 #ifndef STRINGTOK_R_AVAILABLE
-#define STRINGTOK_R_AVAILABLE 1
+#define STRINGTOK_R_AVAILABLE 0
 #endif
 
 #if CLEARING && MIN_GENS_AND_KER_BASIS_IN_PARALLEL
@@ -144,6 +146,9 @@ int main(int argc, char** argv) {
     std::exit(0);
   }
 
+#if PERTURBED
+  std::cout << "Warning: PERTURBED is enabled, writing to output file is supressed" << std::endl;
+#endif
 
 #if TIMERS
   initialize_timers();
@@ -297,6 +302,7 @@ int main(int argc, char** argv) {
   std::cout << "Resulting minimal presentation has " << min_rep.get_num_cols() << " columns and " << min_rep.num_rows << " rows" << std::endl;
   //min_rep.print(true,false);
 
+#if !PERTURBED
   if(argc>=3) {
     std::cout << "Writing to file \"" << argv[2] << "\"..." << std::flush;
     std::ofstream ofstr(argv[2]);
@@ -304,6 +310,7 @@ int main(int argc, char** argv) {
     ofstr.close();
     std::cout << "done" << std::endl;
   }
+#endif
 
 #if TIMERS
   print_timers();
