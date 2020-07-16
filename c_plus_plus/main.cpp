@@ -146,6 +146,19 @@ int main(int argc, char** argv) {
     std::exit(0);
   }
 
+  if(std::string(argv[1])=="-o") {
+    std::cerr << "Running in write-only mode" << std::endl;
+    if(argc<4) {
+      std::cerr << "Input file and output file needed" << std::endl;
+      std::exit(1);
+    }
+    GrMat GM1,GM2;
+    create_matrix_from_firep(argv[2],GM1,GM2);
+    write_matrix_to_firep(argv[3],GM1,GM2);
+    std::exit(0);
+  }
+
+
 #if PERTURBED
   std::cout << "Warning: PERTURBED is enabled, writing to output file is supressed" << std::endl;
 #endif

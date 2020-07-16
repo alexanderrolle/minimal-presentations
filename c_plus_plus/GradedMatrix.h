@@ -8,8 +8,19 @@
 #include <cstdio>
 #include <cerrno>
 
+// Note: If USE_DOUBLE is switched off, a boost number type is used which
+// in principle results in more robust code. However, we experienced
+// problems with that code (when converting the float type into a
+// rational type), so we represent the grade coordinates with doubles,
+// but store the exact input string as well to be able to convert it
+// to a raional later (using rationals throughout yields in a performance
+// penalty)
+#define USE_DOUBLE 1
+
+#if !USE_DOUBLE
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#endif
 
 #include<gmpxx.h>
 
@@ -56,14 +67,7 @@ namespace phat {
   }
 
 
-  // Note If USE_DOUBLE is switched off, a boost number type is used which
-  // in principle results in more robust code. However, we experienced
-  // problems with that code (when converting the float type into a
-  // rational type), so we represent the grade coordinates with doubles,
-  // but store the exact input string as well to be able to convert it
-  // to a raional later (using rationals throughout yields in a performance
-  // penalty)
-#define USE_DOUBLE 1
+
 
 #if USE_DOUBLE
 
@@ -735,17 +739,6 @@ namespace phat {
     }
   };
  
-#if PERTURB
-  
-  double rand_double(double max) {
-    double lower_bound = 0;
-    double upper_bound = 10000;
-    std::uniform_real_distribution<double> unif(0,max);
-    std::default_random_engine re;
-    return unif(re);
-  }
-#endif
-
   // The sign is just a hack for the perturbation scenario and normally has no effect
   void load_prematrix_contents(File_reader& reader,
 			       std::vector<pre_column>& pre_matrix,
@@ -756,7 +749,7 @@ namespace phat {
 #if 1
 
 #if PERTURB
-    std::uniform_real_distribution<double> unif(0,0.00001);
+    std::uniform_real_distribution<double> unif(0,0.01);
     std::default_random_engine re;
 #endif
     pre_matrix.resize(n);
@@ -875,6 +868,36 @@ namespace phat {
     load_prematrix_contents(reader,pre_matrix1,t,+1);
     load_prematrix_contents(reader,pre_matrix2,s,-1);
 
+  }
+
+  template<typename GrMat>
+    void write_matrix_to_firep(char* filename, 
+				  GrMat& matrix1, 
+				  GrMat& matrix2) {
+
+    std::ofstream out(filename);
+    out << "firep" << std::endl;
+    out << "x-coordinate" << std::endl;
+    out << "y-coordinate" << std::endl;
+    out << matrix1.get_num_cols() << " " << matrix2.get_num_cols() << " " << matrix2.num_rows << std::endl;
+    for(int i=0;i<matrix1.get_num_cols();i++) {
+      out << std::fixed << std::setprecision(12) << matrix1.grades[i].first_val << " " << std::fixed << std::setprecision(12) << matrix1.grades[i].second_val << " ; ";
+      std::vector<index> col;
+      matrix1.get_col(i,col);
+      for(index j=0;j<col.size();j++) {
+	out << col[j] << " ";
+      }
+      out << std::endl;
+    }
+    for(int i=0;i<matrix2.get_num_cols();i++) {
+      out << matrix2.grades[i].first_val << " " << matrix2.grades[i].second_val << " ; ";
+      std::vector<index> col;
+      matrix2.get_col(i,col);
+      for(index j=0;j<col.size();j++) {
+	out << col[j] << " ";
+      }
+      out << std::endl;
+    }
   }
   
   template<typename Matrix>
