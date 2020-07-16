@@ -872,6 +872,28 @@ namespace phat {
   }
 
   template<typename GrMat>
+    void write_matrix_to_phat(char* filename, 
+			      GrMat& matrix) {
+    std::ofstream out(filename);
+
+    for(int i=0;i<matrix.get_num_cols();i++) {
+      std::vector<index> col;
+      matrix.get_col(i,col);
+      if(col.size()==0) {
+	out << "0 " << std::endl;
+      } else {
+	index s = col.size();
+	out << s-1 << " ";
+	for(int j=0;j<s;j++) {
+	  out << col[j] << " ";
+	}
+	out << std::endl;
+      }
+    }
+  }
+    
+
+  template<typename GrMat>
     void write_matrix_to_firep(char* filename, 
 				  GrMat& matrix1, 
 				  GrMat& matrix2) {

@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
     std::exit(0);
   }
 
-  if(std::string(argv[1])=="-o") {
+  if(std::string(argv[1])=="-o" || std::string(argv[1])=="-op") {
     std::cerr << "Running in write-only mode" << std::endl;
     if(argc<4) {
       std::cerr << "Input file and output file needed" << std::endl;
@@ -159,7 +159,11 @@ int main(int argc, char** argv) {
     }
     GrMat GM1,GM2;
     create_matrix_from_firep(argv[2],GM1,GM2);
-    write_matrix_to_firep(argv[3],GM1,GM2);
+    if(std::string(argv[1])=="-o") {
+      write_matrix_to_firep(argv[3],GM1,GM2);
+    } else {
+      write_matrix_to_phat(argv[3],GM1);
+    }
     std::exit(0);
   }
 
