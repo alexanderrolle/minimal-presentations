@@ -695,8 +695,9 @@ namespace phat {
     std::cout << "Num grades x " << M1.num_grades_x << std::endl;
     std::cout << "Num grades y " << M1.num_grades_y << std::endl;
     
-    std::cout << "n1=" << n1 << std::endl;
-    std::cout << "n2=" << n2 << std::endl;
+    //std::cout << "n1=" << n1 << std::endl;
+    //std::cout << "n2=" << n2 << std::endl;
+    std::cout << "N is " << n1+n2 << std::endl;
   }
 
   template<typename GradedMatrix>
@@ -1121,6 +1122,8 @@ namespace phat {
 #endif    
 
     std::cout << "After chunk reduction, matrix has " << result1.get_num_cols() << " columns and " << result1.num_rows << " rows" << std::endl;
+    std::cout << "N' is " << result1.get_num_cols()+ result1.num_rows << std::endl;
+    std::cout << "Ratio N'/N: " << (double)(result1.get_num_cols()+ result1.num_rows)/(M1.get_num_cols()+M1.num_rows) << std::endl;
 
     //test_timer4.stop();
 
