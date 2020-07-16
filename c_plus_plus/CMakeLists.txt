@@ -67,4 +67,22 @@ add_executable(main_lazy_smart_sparse_chunk_parfor_parmgkb "main.cpp")
 target_compile_options(main_lazy_smart_sparse_chunk_parfor_parmgkb PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=1 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0)
 target_link_libraries(main_lazy_smart_sparse_chunk_parfor_parmgkb "-lboost_timer -lgmp -lgmpxx")
 
+add_executable(main_vector_vector "main.cpp")
+target_compile_options(main_vector_vector PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=vector_vector)
+target_link_libraries(main_vector_vector "-lboost_timer -lgmp -lgmpxx")
+
+add_executable(main_vector_heap "main.cpp")
+target_compile_options(main_vector_heap PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=vector_heap)
+target_link_libraries(main_vector_heap "-lboost_timer -lgmp -lgmpxx")
+
+
+add_executable(main_vector_list "main.cpp")
+target_compile_options(main_vector_list PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=vector_list)
+target_link_libraries(main_vector_list "-lboost_timer -lgmp -lgmpxx")
+
+add_executable(main_vector_set "main.cpp")
+target_compile_options(main_vector_set PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=vector_set)
+target_link_libraries(main_vector_set "-lboost_timer -lgmp -lgmpxx")
+
+
 

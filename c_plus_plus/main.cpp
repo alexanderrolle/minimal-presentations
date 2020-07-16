@@ -28,6 +28,10 @@
 #define PARALLEL_FOR_LOOPS 1
 #endif
 
+#ifndef COLUMN_REPRESENTATION
+#define COLUMN_REPRESENTATION vector_vector
+#endif
+
 // The reading from input uses strtok_r as a thread-save
 // version of strtok. If this function is not enabled,
 // that part of code is not parallelized, which results
@@ -46,6 +50,7 @@
 #error SPARSE_GRID_TRAVERSAL requires SMART_REDUCTION
 #endif
 
+// If parallelized, the counting does not work (not thread-safe)
 int gl_no_column_additions=0;
 
 #define TIMERS 1
@@ -121,7 +126,7 @@ void print_timers() {
 
 #include "GradedMatrix.h"
 
-typedef phat::GradedMatrix<phat::vector_vector> GrMat;
+typedef phat::GradedMatrix<phat::COLUMN_REPRESENTATION> GrMat;
 
 
 int main(int argc, char** argv) {
@@ -328,8 +333,9 @@ int main(int argc, char** argv) {
 #if TIMERS
   print_timers();
 #endif
+#if !PARALLEL_FOR_LOOPS && !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "Total number of column additions: " << gl_no_column_additions << std::endl;
-
+#endif
   return 0;
   
 }
