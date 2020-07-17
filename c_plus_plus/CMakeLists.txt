@@ -97,7 +97,7 @@ target_compile_options(main_sparse_pivot_column PUBLIC -DCHUNK_PREPROCESSING=1 -
 target_link_libraries(main_sparse_pivot_column "-lboost_timer -lgmp -lgmpxx")
 
 add_executable(main_bit_tree_pivot_column "main.cpp")
-target_compile_options(main_bit_tree_pivot_column PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=0 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=bit_tree_pivot_column)
+target_compile_options(main_bit_tree_pivot_column PUBLIC -DCHUNK_PREPROCESSING=1 -DSMART_REDUCTION=1 -DSPARSE_GRID_TRAVERSAL=1 -DCLEARING=0 -DMIN_GENS_AND_KER_BASIS_IN_PARALLEL=0 -DLAZY_MINIMIZATION=1 -DPARALLEL_FOR_LOOPS=1 -DSWAP_GRADE=0 -DPERTURB=0 -DCOLUMN_REPRESENTATION=bit_tree_pivot_column)
 target_link_libraries(main_bit_tree_pivot_column "-lboost_timer -lgmp -lgmpxx")
 
 
