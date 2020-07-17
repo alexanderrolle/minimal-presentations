@@ -958,9 +958,12 @@ namespace phat {
     test_timer4.resume();
     {
       int n = pre_matrix1.size();
+      NUM_ROWS=pre_matrix2.size();
       matrix1.set_num_cols(n);
+      NUM_ROWS=1;
       matrix1.grades.resize(n);
-      
+
+      matrix1.sync();
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
@@ -969,14 +972,18 @@ namespace phat {
         matrix1.grades[i]=pcol.grade;
 	matrix1.set_col(i,pcol.boundary);
       }
+      matrix1.sync();
       matrix1.assign_slave_matrix();
       matrix1.num_rows=pre_matrix2.size();
       matrix1.assign_pivots();
     }
     {
       int n = pre_matrix2.size();
+      NUM_ROWS=r;
       matrix2.set_num_cols(n);
+      NUM_ROWS=-1;
       matrix2.grades.resize(n);
+      matrix2.sync();
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
@@ -985,6 +992,7 @@ namespace phat {
         matrix2.grades[i]=pcol.grade;
 	matrix2.set_col(i,pcol.boundary);
       }
+      matrix2.sync();
       matrix2.assign_slave_matrix();
       matrix2.num_rows=r;
       matrix2.assign_pivots();
@@ -1037,6 +1045,7 @@ namespace phat {
     //test_timer1.stop();
     std::cout << "Sparsification" << std::endl;
     //test_timer2.start();
+    M1.sync();
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
@@ -1063,6 +1072,7 @@ namespace phat {
       std::sort(col.begin(),col.end());
       M1.set_col(i,col);
     }
+    M1.sync();
     //test_timer2.stop();
     std::cout << "Build up smaller matrices" << std::endl;
     //test_timer3.start();
@@ -1088,7 +1098,9 @@ namespace phat {
     }
     //test_timer3.stop();
     //test_timer4.start();
+    NUM_ROWS=row_count;
     result1.set_num_cols(col_count);
+    NUM_ROWS=-1;
     for(index i=0;i<M1.get_num_cols();i++) {
       if(new_col_index[i]!=-1) {
 	result1.grades.push_back(M1.grades[i]);
@@ -1102,7 +1114,9 @@ namespace phat {
     }
     
     result1.num_rows=row_count;
+    NUM_ROWS=M2.num_rows;
     result2.set_num_cols(row_count);
+    NUM_ROWS=-1;
     for(index i=0;i<M1.num_rows;i++) {
       if(local_pivots[i]==-1) {
 	result1.row_grades.push_back(M1.row_grades[i]);
@@ -1216,8 +1230,9 @@ namespace phat {
 	}
       }
     }
-  
+    NUM_ROWS=M.num_rows;
     result.set_num_cols(new_cols.size());
+    NUM_ROWS=-1;
     for(index i=0;i<new_cols.size();i++) {
       result.grades.push_back(new_grades[i]);
       result.set_col(i,new_cols[i]);
@@ -1283,7 +1298,9 @@ namespace phat {
 	}
       }
     }
+    NUM_ROWS=M.num_rows;
     result.set_num_cols(new_cols.size());
+    NUM_ROWS=-1;
     for(index i=0;i<new_cols.size();i++) {
       result.grades.push_back(new_grades[i]);
       result.set_col(i,new_cols[i]);
@@ -1376,7 +1393,9 @@ namespace phat {
       }
       //test_timer1.stop();
     }
+    NUM_ROWS=M.get_num_cols();
     result.set_num_cols(new_cols.size());
+    NUM_ROWS=-1;
     for(index i=0;i<new_cols.size();i++) {
       result.grades.push_back(new_grades[i]);
       result.set_col(i,new_cols[i]);
@@ -1442,7 +1461,9 @@ namespace phat {
       //test_timer3.stop();
       
     }
+    NUM_ROWS=M.get_num_cols();
     result.set_num_cols(new_cols.size());
+    NUM_ROWS=-1;
     for(index i=0;i<new_cols.size();i++) {
       result.grades.push_back(new_grades[i]);
       result.set_col(i,new_cols[i]);
@@ -1468,13 +1489,19 @@ namespace phat {
   template<typename GradedMatrix>
     void reparameterize(GradedMatrix& cols, GradedMatrix& ker, GradedMatrix& result) {
     index ker_cols = ker.get_num_cols();
+    NUM_ROWS=ker.num_rows;
     ker.set_num_cols(ker_cols + cols.get_num_cols());
+    NUM_ROWS=-1;
+    NUM_ROWS=ker_cols;
     ker.slave.set_num_cols(ker_cols+cols.get_num_cols());
+    NUM_ROWS=-1;
     std::vector<index> empty_vec;
     for(index i = ker_cols;i<ker.get_num_cols();i++) {
       ker.slave.set_col(i,empty_vec);
     }
+    NUM_ROWS=ker_cols;
     result.set_num_cols(cols.get_num_cols());
+    NUM_ROWS=-1;
     
     /*
     std::cout << "Pivots:" << std::endl;
@@ -1488,6 +1515,9 @@ namespace phat {
 
     //test_timer4.start();
     index_pair dummy;
+    cols.sync();
+    ker.sync();
+    result.sync();
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
@@ -1504,6 +1534,9 @@ namespace phat {
       ker.slave.get_col(ker_cols+i,new_col);
       result.set_col(i,new_col);
     }
+    cols.sync();
+    ker.sync();
+    result.sync();
     //test_timer4.stop();
     // Assign row grades
     result.num_rows=ker_cols;
@@ -1615,6 +1648,7 @@ namespace phat {
 #if LAZY_MINIMIZATION
     //std::cout << "HERE I AM " << std::endl;
     //test_timer2.start();
+    VVM.sync();
 #if PARALLEL_FOR_LOOPS
 #pragma omp parallel for schedule(guided,1)
 #endif
@@ -1633,6 +1667,7 @@ namespace phat {
       }
       std::reverse(col.begin(),col.end());
     }
+    VVM.sync();
     //test_timer2.stop();
 #else
     for(index i=0;i<cols_to_keep.size();i++) {
@@ -1668,7 +1703,9 @@ namespace phat {
       }
     }
     // Now build up the result
+    NUM_ROWS=index_map.size();
     result.set_num_cols(cols_to_keep.size());
+    NUM_ROWS=-1;
     result.num_rows=index_map.size();
     result.grades = col_grades;
     result.row_grades=res_row_grades;
