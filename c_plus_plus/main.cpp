@@ -256,7 +256,7 @@ int main(int argc, char** argv) {
 #endif
   min_gens(GM1,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
-  std::cout << "done" << std::endl;
+  std::cout << "done, size is " << MG.num_rows << "x" << MG.get_num_cols() << std::endl;
 #if TIMERS
   mingens_timer.stop();
 #endif
@@ -276,7 +276,7 @@ int main(int argc, char** argv) {
 #endif
   ker_basis(GM2,Ker,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
-  std::cout << "done" << std::endl;
+  std::cout << "done, size is " << Ker.num_rows << "x" << Ker.get_num_cols() << std::endl;
 #if TIMERS
   kerbasis_timer.stop();
 #endif
