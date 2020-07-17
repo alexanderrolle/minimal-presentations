@@ -115,7 +115,11 @@ class Uniform_representation {
     col_traits.col_at(matrix, idx)._finalize(); 
   }
         
-  void _sync() {}
+  void _sync() {
+    for(index idx = 0;idx < matrix.size();idx++) {
+      matrix[idx]._sync();
+    }
+  }
 
 };
  
