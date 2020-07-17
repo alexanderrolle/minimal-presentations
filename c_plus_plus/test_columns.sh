@@ -2,7 +2,11 @@ echo RUNNING main_vector_vector
 /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_vector $1 reference.out
 echo RUNNING main_vector_heap
 /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_heap $1 result.out
-diff -s reference.out result.out
+if  cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
 echo RUNNING main_vector_list
 /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_list $1 result.out
 diff -s reference.out result.out
