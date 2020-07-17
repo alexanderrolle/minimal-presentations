@@ -138,7 +138,7 @@ namespace phat {
 	}
 
         // syncronizes all data structures (essential for openmp stuff)
-        void _sync( ) {}
+        void _sync( ) {_prune();}
 
         // adds column 'source' to column 'target'
         void _add_to( const Self& source )
