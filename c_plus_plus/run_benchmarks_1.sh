@@ -1,7 +1,7 @@
 cmake .
 make
 
-for x in 96 175 330
+for x in 96 175 330 640
   do
     for i in 1 2 3 4 5
       do
