@@ -22,6 +22,16 @@
 
 namespace phat{
 
+  // MODIFICATION: This global variable can be set to make sure
+  // that columns are initialized with the right number of rows
+  // (important for bit_tree_pivot_column and full_pivot_column)
+  // This is just a dirty hack - one has to take care that the variable
+  // is set back to -1 afterwards again. A proper solution in the phat
+  // library would be desireable
+  
+  int NUM_ROWS=-1;
+
+
 template<typename BaseRepresentation, typename PivotColumn> 
   class Pivot_representation : public BaseRepresentation {
 
@@ -35,6 +45,8 @@ template<typename BaseRepresentation, typename PivotColumn>
   // For parallization purposes, it could be more than one full column
   mutable thread_local_storage< Pivot_column > pivot_cols;
   mutable thread_local_storage< index > idx_of_pivot_cols;
+
+  bool initialized=false;
 
   Pivot_column& get_pivot_col() const {
     return pivot_cols();
@@ -72,11 +84,22 @@ template<typename BaseRepresentation, typename PivotColumn>
  public:  
 
   void _set_num_cols( index nr_of_cols ) {
+    
+    if(initialized) {
+      _sync();
+    }
+    
     #pragma omp parallel for
     for( int tid = 0; tid < omp_get_num_threads(); tid++ ) {
-      pivot_cols[ tid ].init( nr_of_cols );
+      /*
+      if(NUM_ROWS!=-1) {
+	std::cout << "Init with " << NUM_ROWS << " rows" << std::endl;
+      }
+      */
+      pivot_cols[ tid ].init( NUM_ROWS==-1 ? nr_of_cols : NUM_ROWS );
       idx_of_pivot_cols[ tid ] = -1;
     }
+    initialized=true;
     Base::_set_num_cols( nr_of_cols );
   }
 
