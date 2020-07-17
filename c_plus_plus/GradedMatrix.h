@@ -1028,6 +1028,9 @@ namespace phat {
       local_pivots.push_back(-1);
     }
     std::cout << "Local reduction" << std::endl;
+    std::vector<index> global_indices;
+    std::vector<char> local_vec;
+    local_vec.resize(M1.get_num_cols());
     //test_timer1.start();
     for(index i=0;i<M1.get_num_cols();i++) {
       while(M1.is_local(i)) {
@@ -1038,30 +1041,47 @@ namespace phat {
 	  gl_no_column_additions++;
 	} else {
 	  local_pivots[p]=i;
+	  local_vec[i]=1;
 	  break;
 	}
+      }
+      if(!M1.is_local(i)) {
+	global_indices.push_back(i);
+	//std::cout << i << " is global" << std::endl;
+	local_vec[i]=0;
       }
     }
     //test_timer1.stop();
     std::cout << "Sparsification" << std::endl;
     //test_timer2.start();
+    /*
+    for(index i=0;i<M1.get_num_cols();i++) {
+      if(local_vec[i]) {
+	index p = M1.get_max_index(i);
+	assert(p!=-1);
+	index j = local_pivots[p];
+	assert(j==i);
+      }
+    }
+    */
+    std::vector<index> col;
     M1.sync();
 #if PARALLEL_FOR_LOOPS
-#pragma omp parallel for schedule(guided,1)
+#pragma omp parallel for schedule(guided,1), private(col)
 #endif
-    for(index i=0;i<M1.get_num_cols();i++) {
-      if(M1.is_empty(i) || M1.is_local(i)) {
-	continue;
-      }
-      std::vector<index> col;
+    for(index r=0;r<global_indices.size();r++) {
+      col.clear();
+      index i = global_indices[r];
+      //std::cout << "Fetching " << i << std::endl;
+      assert(!local_vec[i]);
+      
       //std::cout << "i=" << i << std::endl;
       while(!M1.is_empty(i)) {
 	index p = M1.get_max_index(i);
-
 	index j = local_pivots[p];
-	//std::cout << "Pivot=" << p << " " << j << std::endl;
-	assert(j==-1 || M1.get_max_index(j)==p);
 	if(j!=-1) {
+	  assert(local_vec[j]);
+	  assert(!local_vec[i]);
 	  M1.add_to(j,i);
 	  gl_no_column_additions++;
 	} else {
@@ -1069,10 +1089,22 @@ namespace phat {
 	  M1.remove_max(i);
 	}
       }
-      std::sort(col.begin(),col.end());
+      std::reverse(col.begin(),col.end());
       M1.set_col(i,col);
     }
     M1.sync();
+    /*
+    for(index i=0;i<M1.get_num_cols();i++) {
+      std::cout << "XXX ";
+      std::vector<index> col;
+      M1.get_col(i,col);
+      for(index j : col) {
+	std::cout << j << " ";
+      }
+      std::cout << std::endl;
+    }
+    */
+
     //test_timer2.stop();
     std::cout << "Build up smaller matrices" << std::endl;
     //test_timer3.start();
