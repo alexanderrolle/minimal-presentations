@@ -18,18 +18,14 @@ set(CMAKE_BUILD_TYPE Release)
 
 find_package(CGAL QUIET COMPONENTS Core )
 
-#include_directories(AFTER /home/mkerber/gudhi-2.1.0/include)
-
-#find_package(Boost REQUIRED Timer)
-
-#find_package(GUDHI)
-
-
 
 if ( CGAL_FOUND )
 
-  add_executable(main "main.cpp")
-  target_link_libraries(main ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
+  add_executable(points_inside_sphere "points_inside_sphere.cpp")
+  target_link_libraries(points_inside_sphere ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
+
+  add_executable(points_on_sphere "points_on_sphere.cpp")
+  target_link_libraries(points_on_sphere ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
 
 else()
   
