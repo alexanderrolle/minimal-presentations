@@ -185,8 +185,8 @@ int main(int argc, char** argv)
 	cit++) {
       auto val = value_of(cit);
       std::vector<int> bd=boundary_of(cit);
-      std::cout << CGAL::to_double(val.first) << " "
-	      << CGAL::to_double(val.second) << " ; ";
+      std::cout << std::setprecision(12) << std::fixed << CGAL::to_double(val.first) << " "
+		<< std::setprecision(12) << std::fixed<< CGAL::to_double(val.second) << " ; ";
       for(auto it : bd) {
 	std::cout << it <<  " ";
       }
@@ -198,8 +198,8 @@ int main(int argc, char** argv)
       fit++) {
     auto val = value_of(*fit);
     std::vector<int> bd=boundary_of(*fit);
-    std::cout << CGAL::to_double(val.first) << " "
-	      << CGAL::to_double(val.second) << " ; ";
+    std::cout << std::setprecision(12) << std::fixed<< CGAL::to_double(val.first) << " "
+	      << std::setprecision(12) << std::fixed<< CGAL::to_double(val.second) << " ; ";
     for(auto it : bd) {
       std::cout << it <<  " ";
     }
@@ -211,8 +211,8 @@ int main(int argc, char** argv)
 	eit++) {
       auto val = value_of(*eit);
       std::vector<int> bd=boundary_of(*eit);
-      std::cout << CGAL::to_double(val.first) << " "
-		<< CGAL::to_double(val.second) << " ; ";
+      std::cout << std::setprecision(12) << std::fixed<< CGAL::to_double(val.first) << " "
+		<< std::setprecision(12) << std::fixed<< CGAL::to_double(val.second) << " ; ";
       for(auto it : bd) {
 	std::cout << it <<  " ";
       }
