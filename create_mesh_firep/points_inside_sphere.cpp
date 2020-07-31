@@ -118,7 +118,14 @@ std::pair<Coordinate,Coordinate> value_of(const Cell_handle& ch) {
 int main(int argc, char** argv)
 {
   int n = (argc>1) ? atoi(argv[1]) : 100;
-  int mode = (argc>2) ? atoi(argv[2]) : 0;
+  int dim = (argc>2) ? atoi(argv[2]) : 1;
+  
+  if(dim!=1 && dim!=2) {
+    std::cerr << "dim must be 1 or 2" << std::endl;
+    std::exit(1);
+  }
+
+  
   Delaunay T;
   std::vector<Point> pts;
   CGAL::Random_points_in_sphere_3<Point> rnd;
@@ -164,10 +171,11 @@ int main(int argc, char** argv)
 
   
 
+    
   
   std::cout << "firep\nx-coordinate\ny-coordinate\n";
 
-  if(mode==0) {
+  if(dim==1) {
     std::cout << T.number_of_finite_facets() << " " 
 	      << T.number_of_finite_edges() << " "
 	      << T.number_of_vertices() << std::endl;
@@ -179,7 +187,7 @@ int main(int argc, char** argv)
     std::cerr << "N=" << T.number_of_finite_facets()+T.number_of_finite_cells() << std::endl;
   }
     
-  if(mode==1) {
+  if(dim==2) {
     for(auto cit = T.finite_cells_begin();
 	cit!=T.finite_cells_end();
 	cit++) {
@@ -205,7 +213,7 @@ int main(int argc, char** argv)
     }
     std::cout << std::endl;
   }
-  if(mode==0) {
+  if(dim==1) {
     for(auto eit = T.finite_edges_begin();
 	eit!=T.finite_edges_end();
 	eit++) {
