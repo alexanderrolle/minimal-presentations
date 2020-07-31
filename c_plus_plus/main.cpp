@@ -1,5 +1,5 @@
 #ifndef CHUNK_PREPROCESSING
-#define CHUNK_PREPROCESSING 1
+#define CHUNK_PREPROCESSING 0
 #endif
 
 #ifndef SMART_REDUCTION
@@ -25,7 +25,7 @@
 
 
 #ifndef PARALLEL_FOR_LOOPS
-#define PARALLEL_FOR_LOOPS 1
+#define PARALLEL_FOR_LOOPS 0
 #endif
 
 #ifndef COLUMN_REPRESENTATION
@@ -74,7 +74,7 @@ int gl_no_column_additions=0;
 #if TIMERS
 #include <boost/timer/timer.hpp>
 
-boost::timer::cpu_timer overall_timer, chunk_timer,firep_timer, mingens_timer, kerbasis_timer, 
+boost::timer::cpu_timer overall_timer, chunk_timer,io_timer, mingens_timer, kerbasis_timer, 
   reparam_timer,minimize_timer,
   test_timer1, test_timer2, test_timer3, test_timer4,test_timer5;
 
@@ -83,8 +83,8 @@ void initialize_timers() {
   overall_timer.stop();
   chunk_timer.start();
   chunk_timer.stop();
-  firep_timer.start();
-  firep_timer.stop();
+  io_timer.start();
+  io_timer.stop();
   mingens_timer.start();
   mingens_timer.stop();
   kerbasis_timer.start();
@@ -93,7 +93,6 @@ void initialize_timers() {
   reparam_timer.stop();
   minimize_timer.start();
   minimize_timer.stop();
-
   test_timer1.start();
   test_timer1.stop();
   test_timer2.start();
@@ -108,7 +107,7 @@ void initialize_timers() {
 
 void print_timers() {
   std::cout << "Overall timer: " << double(overall_timer.elapsed().wall)/std::pow(10,9) << std::endl;
-  std::cout << "Firep timer: " << double(firep_timer.elapsed().wall)/std::pow(10,9) << "      ( " << double(firep_timer.elapsed().wall)/double(overall_timer.elapsed().wall)*100 << "% )" << std::endl;
+  std::cout << "IO timer: " << double(io_timer.elapsed().wall)/std::pow(10,9) << "      ( " << double(io_timer.elapsed().wall)/double(overall_timer.elapsed().wall)*100 << "% )" << std::endl;
   std::cout << "Chunk timer: " << double(chunk_timer.elapsed().wall)/std::pow(10,9) << "      ( " << double(chunk_timer.elapsed().wall)/double(overall_timer.elapsed().wall)*100 << "% )" << std::endl;
   std::cout << "Mingens timer: " << double(mingens_timer.elapsed().wall)/std::pow(10,9) << "     ( " << double(mingens_timer.elapsed().wall)/double(overall_timer.elapsed().wall)*100 << "% )" << std::endl;
   std::cout << "Kerbasis timer: " << double(kerbasis_timer.elapsed().wall)/std::pow(10,9) << "    ( " << double(kerbasis_timer.elapsed().wall)/double(overall_timer.elapsed().wall)*100 << "% )" << std::endl;
@@ -189,16 +188,16 @@ int main(int argc, char** argv) {
 #endif
 
 
+#if TIMERS
+  io_timer.start();
+#endif
 
   GrMat preGM1,preGM2;
 
-#if TIMERS
-  firep_timer.start();
-#endif
   create_matrix_from_firep(argv[1],preGM1,preGM2);
 
 #if TIMERS
-  firep_timer.stop();
+  io_timer.stop();
 #endif
 
 
@@ -219,11 +218,11 @@ int main(int argc, char** argv) {
 
   preGM1=GrMat();
   preGM2=GrMat();
-  
 
 #if TIMERS
   chunk_timer.stop();
 #endif
+
 
   //GM1.print();
   //GM2.print();
@@ -233,10 +232,7 @@ int main(int argc, char** argv) {
   GrMat& GM2=preGM2;
 #endif
 
-
-
-
-  GrMat MG,Ker;
+GrMat MG,Ker;
 
 #if MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "Min Gens and ker_basis in parallel..." << std::flush;
@@ -253,10 +249,12 @@ int main(int argc, char** argv) {
   mingens_timer.start();
 #endif
   std::cout << "Min Gens..." << std::flush;
+  GM1.grid_scheduler=phat::Grid_scheduler(GM1);
 #endif
   min_gens(GM1,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done, size is " << MG.num_rows << "x" << MG.get_num_cols() << std::endl;
+  GM1=GrMat();
 #if TIMERS
   mingens_timer.stop();
 #endif
@@ -273,10 +271,13 @@ int main(int argc, char** argv) {
 #endif
 
   std::cout << "Ker basis..." << std::flush;
+  GM2.grid_scheduler=phat::Grid_scheduler(GM2);
 #endif
   ker_basis(GM2,Ker,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done, size is " << Ker.num_rows << "x" << Ker.get_num_cols() << std::endl;
+  GM2=GrMat(); 
+
 #if TIMERS
   kerbasis_timer.stop();
 #endif
@@ -289,48 +290,54 @@ int main(int argc, char** argv) {
   std::cout << "done" << std::endl;
 #endif
 
-  GM1=GrMat();
-  GM2=GrMat();
-
-  GrMat semi_min_rep;
 
 #if TIMERS
   reparam_timer.start();
 #endif
+  GrMat semi_min_rep;
   std::cout << "Reparameterize..." << std::flush;
   reparameterize(MG,Ker,semi_min_rep);
   std::cout << "done" << std::endl;
+  std::cout << "Resulting semi-minimal presentation has " << semi_min_rep.get_num_cols() << " columns and " << semi_min_rep.num_rows << " rows" << std::endl;
+  MG=GrMat();
+  Ker=GrMat();
+  
 #if TIMERS
   reparam_timer.stop();
 #endif
 
-  std::cout << "Resulting semi-minimal presentation has " << semi_min_rep.get_num_cols() << " columns and " << semi_min_rep.num_rows << " rows" << std::endl;
-
-  MG=GrMat();
-
   //semi_min_rep.print(true,false);
 
-  GrMat min_rep;
+
 #if TIMERS
   minimize_timer.start();
 #endif
+  GrMat min_rep;
   std::cout << "Minimize..." << std::flush;
   minimize(semi_min_rep,min_rep);
   std::cout << "done" << std::endl;
+  std::cout << "Resulting minimal presentation has " << min_rep.get_num_cols() << " columns and " << min_rep.num_rows << " rows" << std::endl;
+  semi_min_rep=GrMat(); 
 #if TIMERS
   minimize_timer.stop();
 #endif
 
-  std::cout << "Resulting minimal presentation has " << min_rep.get_num_cols() << " columns and " << min_rep.num_rows << " rows" << std::endl;
-  //min_rep.print(true,false);
 
 #if !PERTURBED
   if(argc>=3) {
+#if TIMERS
+    io_timer.resume();
+#endif
+
     std::cout << "Writing to file \"" << argv[2] << "\"..." << std::flush;
     std::ofstream ofstr(argv[2]);
     print_in_rivet_format(min_rep,ofstr);
     ofstr.close();
     std::cout << "done" << std::endl;
+#if TIMERS
+    io_timer.stop();
+#endif
+
   }
 #endif
 
