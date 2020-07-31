@@ -12,6 +12,7 @@ make
 ./run_benchmarks_6.sh 2>&1 | tee -a $1
 ./run_benchmarks_7.sh 2>&1 | tee -a $1
 ./run_benchmarks_8.sh 2>&1 | tee -a $1
+./run_benchmarks_9.sh 2>&1 | tee -a $1
 
 echo "Ending:"
 date
