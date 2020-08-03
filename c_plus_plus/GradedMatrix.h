@@ -1001,10 +1001,12 @@ namespace phat {
     test_timer5.resume();
     assign_grade_indices(matrix1,matrix2);
     test_timer5.stop();
+    /*
 #if !CHUNK_PREPROCESSING
     matrix1.grid_scheduler=Grid_scheduler(matrix1);
     matrix2.grid_scheduler=Grid_scheduler(matrix2);
 #endif
+    */
     for(index i=0;i<matrix1.num_rows;i++) {
       matrix1.row_grades.push_back(matrix2.grades[i]);
     }
@@ -1179,9 +1181,11 @@ namespace phat {
 
     std::cout << "Setting up grid scheduler..." << std::flush;
 
+    /*
     result1.grid_scheduler=Grid_scheduler(result1);
     result2.grid_scheduler=Grid_scheduler(result2);
-    
+    */    
+
     std::cout << "done" << std::endl;
 
 #if SMART_REDUCTION

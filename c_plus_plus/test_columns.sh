@@ -49,6 +49,62 @@ then
     echo "OUTPUTS DIFFER"
     exit 1
 fi
+echo RUNNING main_vector_vector_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_vector_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_vector_heap_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_heap_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_vector_list_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_list_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_vector_set_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_set_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_full_pivot_column_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_full_pivot_column_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_sparse_pivot_column_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_sparse_pivot_column_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_heap_pivot_column_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_heap_pivot_column_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
+echo RUNNING main_bit_tree_pivot_column_parfor
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_bit_tree_pivot_column_parfor $1 result.out
+if  ! cmp -s reference.out result.out
+then
+    echo "OUTPUTS DIFFER"
+    exit 1
+fi
 
 
 

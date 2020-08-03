@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
     assert(bd.size()==3);
     std::pair<double,double> val = get_max(endpoints);
     std::sort(bd.begin(),bd.end());
-    std::cout << val.first << " " << val.second << " ; " << bd[0] << " " << bd[1] << " " << bd[2] << " " << std::endl;
+    std::cout << std::setprecision(12) << std::fixed << val.first << " " << std::setprecision(12) << std::fixed << val.second << " ; " << bd[0] << " " << bd[1] << " " << bd[2] << " " << std::endl;
     
     
   }
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
     //std::cout << "2nd point " << q.x() << " " << q.y() << " " << q.z() << std::endl;
     std::pair<double,double> val = get_max(endpoints);
     
-    std::cout << val.first << " " << val.second << " ; " << i << " " << j << " " << std::endl;
+    std::cout << std::setprecision(12) << std::fixed << val.first << " " << std::setprecision(12) << std::fixed << val.second <<  " ; " << i << " " << j << " " << std::endl;
   }
   
 

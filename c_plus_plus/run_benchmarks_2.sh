@@ -1,6 +1,4 @@
-cmake .
-make
-
+# Benchmarks for multi-cover, perturbed instances (obsolete)
 for x in 20 29 46
   do
     for i in 1 2 3 4 5
