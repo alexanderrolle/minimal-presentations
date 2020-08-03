@@ -1276,15 +1276,18 @@ namespace phat {
 #if CLEARING
     // check potential of clearing
     int no_local_pairs=0;
+    std::set<int> columns_saved;
     int no_cols_with_dominating_pivots=0;
     for(int i=0;i<result.get_num_cols();i++) {
       if(result.is_empty(i)) {
 	continue;
       }
       if(result.is_local(i)) {
+	columns_saved.insert(i);
 	no_local_pairs++;
       }
       if(result.pivot_is_dominating(i)) {
+	columns_saved.insert(i);
 	no_cols_with_dominating_pivots++;
 	index p = result.get_max_index(i);
 	result.clearing_info[p]=i;
@@ -1292,6 +1295,7 @@ namespace phat {
       
     }
     std::cout << "Min gens matrix has " << result.get_num_cols() << " columns, out of which " << no_local_pairs << " are local and " << no_cols_with_dominating_pivots << " have a dominating pivot (" << double(no_cols_with_dominating_pivots*100)/result.get_num_cols() << "%)" << std::endl;
+    std::cout << "Columns replaced: " << columns_saved.size() << std::endl;
 #endif // of CLEARING
 
   }
