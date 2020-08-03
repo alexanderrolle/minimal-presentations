@@ -1287,13 +1287,14 @@ namespace phat {
 	continue;
       }
       if(result.is_local(i)) {
-	columns_saved.insert(i);
+	index p = result.get_max_index(i);
+	columns_saved.insert(p);
 	no_local_pairs++;
       }
       if(result.pivot_is_dominating(i)) {
-	columns_saved.insert(i);
 	no_cols_with_dominating_pivots++;
 	index p = result.get_max_index(i);
+	columns_saved.insert(p);
 	result.clearing_info[p]=i;
       }
       
