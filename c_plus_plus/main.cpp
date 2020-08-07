@@ -249,8 +249,8 @@ GrMat MG,Ker;
   mingens_timer.start();
 #endif
   std::cout << "Min Gens..." << std::flush;
-  GM1.grid_scheduler=phat::Grid_scheduler(GM1);
 #endif
+  GM1.grid_scheduler=phat::Grid_scheduler(GM1);
   min_gens(GM1,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done, size is " << MG.num_rows << "x" << MG.get_num_cols() << std::endl;
@@ -271,8 +271,8 @@ GrMat MG,Ker;
 #endif
 
   std::cout << "Ker basis..." << std::flush;
-  GM2.grid_scheduler=phat::Grid_scheduler(GM2);
 #endif
+  GM2.grid_scheduler=phat::Grid_scheduler(GM2);
   ker_basis(GM2,Ker,MG);
 #if !MIN_GENS_AND_KER_BASIS_IN_PARALLEL
   std::cout << "done, size is " << Ker.num_rows << "x" << Ker.get_num_cols() << std::endl;
@@ -288,6 +288,10 @@ GrMat MG,Ker;
   }
   kerbasis_timer.stop();
   std::cout << "done" << std::endl;
+  std::cout << "size of MG is " << MG.num_rows << "x" << MG.get_num_cols() << std::endl; 
+  std::cout << "size of KER is " << Ker.num_rows << "x" << Ker.get_num_cols() << std::endl; 
+  GM1=GrMat();
+  GM2=GrMat();
 #endif
 
 
