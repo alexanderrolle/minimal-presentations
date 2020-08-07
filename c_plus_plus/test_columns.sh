@@ -1,110 +1,20 @@
 echo RUNNING main_vector_vector
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_vector $1 reference.out
-echo RUNNING main_vector_heap
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_heap $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_list
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_list $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_set
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_set $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_full_pivot_column
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_full_pivot_column $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_sparse_pivot_column
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_sparse_pivot_column $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_heap_pivot_column
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_heap_pivot_column $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_bit_tree_pivot_column
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_bit_tree_pivot_column $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_vector_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_vector_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_heap_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_heap_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_list_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_list_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_vector_set_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_set_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_full_pivot_column_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_full_pivot_column_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_sparse_pivot_column_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_sparse_pivot_column_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_heap_pivot_column_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_heap_pivot_column_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
-echo RUNNING main_bit_tree_pivot_column_parfor
-/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_bit_tree_pivot_column_parfor $1 result.out
-if  ! cmp -s reference.out result.out
-then
-    echo "OUTPUTS DIFFER"
-    exit 1
-fi
+./instance.sh ./main_vector_vector $1 reference.out
+
+echo RUNNING main_vector_vector_parfor 
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_vector_vector_parfor $1 compare.out 
+diff -sq reference.out compare.out
+
+for col in vector_heap vector_list vector_set full_pivot_column sparse_pivot_column heap_pivot_column bit_tree_pivot_column
+do
+  echo RUNNING main_$col
+  ./instance.sh ./main_$col $1 compare.out
+  diff -sq reference.out compare.out
+  echo RUNNING main_${col}_parfor 
+  ./instance.sh ./main_${col}_parfor $1 compare.out 
+  diff -sq reference.out compare.out
+done 
+
 
 
 

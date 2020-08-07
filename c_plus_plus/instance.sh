@@ -1,0 +1,1 @@
+/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 3600 $1 $2 $3

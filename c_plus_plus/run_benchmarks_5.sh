@@ -1,44 +1,6 @@
-# Benchmarks for mesh data from aim@shape
-for x in hand eros
+# Benchmarks for column types
+for x in multi_cover_data/k_fold_1250_10_1.txt multi_cover_data/k_fold_4990_10_1.txt noisy_circle_fireps/noisy_circle_firep_10_1.txt noisy_circle_fireps/noisy_circle_firep_13_1.txt from_off_fireps/hand.off.firep from_off_fireps/dragon.off.firep random_del_fireps/instance_80000_1_dim_1.firep random_del_fireps/instance_320000_1_dim_1.firep random_del_fireps/instance_80000_1_dim_2.firep random_del_fireps/instance_320000_1_dim_2.firep points_on_sphere_fireps/instance_400000_1.firep points_on_sphere_fireps/instance_1600000_1.firep
   do
-        echo BENCHMARK FOR ${x}.off.firep
-	echo RUNNING main_lazy_smart_sparse_chunk_parfor
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk_parfor from_off_fireps/${x}.off.firep reference.out
-	echo RUNNING main_rivet
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_rivet from_off_fireps/${x}.off.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse from_off_fireps/${x}.off.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk from_off_fireps/${x}.off.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk_parfor_clearing
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk_parfor_clearing from_off_fireps/${x}.off.firep compare.out
-	#echo Diff of output files: 
-        #diff -sq reference.out compare.out
-	wc -l reference.out compare.out
-  done
-
-for x in dragon raptor
-  do
-        echo BENCHMARK FOR ${x}.off.firep
-	echo RUNNING main_lazy_smart_sparse_chunk_parfor
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk_parfor from_off_fireps/${x}.off.firep reference.out
-	echo RUNNING main_lazy_smart_sparse
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse from_off_fireps/${x}.off.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk from_off_fireps/${x}.off.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk_parfor_clearing
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" ./main_lazy_smart_sparse_chunk_parfor_clearing from_off_fireps/${x}.off.firep compare.out
-	#echo Diff of output files: 
-        #diff -sq reference.out compare.out
-	wc -l reference.out compare.out
+        echo BENCHMARK FOR ${x}
+	./test_columns.sh $x
   done

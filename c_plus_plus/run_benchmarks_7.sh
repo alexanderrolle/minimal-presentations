@@ -1,30 +1,47 @@
-#Benchmarks for points on sphere, small data
-for x in 7500 15000 30000 60000
+#Benchmarks for random delaunay, small data
+for dim in 1 2
   do
-    for i in 1 2 3 4 5
-      do
-        echo BENCHMARK FOR points_on_sphere_firep_${x}_${i}.txt
-	echo RUNNING rivet
-	/usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ~/rivet/rivet_console points_on_sphere_fireps/instance_${x}_${i}.firep --minpres --num_threads=1 > compare.out
-	echo RUNNING main_rivet
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ./main_rivet points_on_sphere_fireps/instance_${x}_${i}.firep reference.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_smart_sparse
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ./main_smart_sparse points_on_sphere_fireps/instance_${x}_${i}.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ./main_lazy_smart_sparse points_on_sphere_fireps/instance_${x}_${i}.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ./main_lazy_smart_sparse_chunk points_on_sphere_fireps/instance_${x}_${i}.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
-	echo RUNNING main_lazy_smart_sparse_chunk_parfor
-        /usr/bin/time --format "RESULTS %C\nTime: %e\nMemory: %M\nMemorySwaps: %W" timeout 1800 ./main_lazy_smart_sparse_chunk_parfor points_on_sphere_fireps/instance_${x}_${i}.firep compare.out
-	echo Diff of output files: 
-        diff -sq reference.out compare.out
+  for x in 5000 10000 20000 40000
+    do
+      for i in 1 2 3 4 5
+	do
+          echo BENCHMARK FOR random_del_firep_${x}_${i}_${dim}.txt
+	  echo RUNNING main_lazy_smart_sparse_chunk_parfor
+	  ./instance.sh ./main_lazy_smart_sparse_chunk_parfor random_del_fireps/instance_${x}_${i}_dim_${dim}.firep reference.out
+	  echo RUNNING rivet
+	  ./rivet_instance.sh random_del_fireps/instance_${x}_${i}_dim_${dim}.firep compare.out
+	  diff -sq reference.out compare.out
+	  for prog in ./main_rivet ./main_smart_sparse ./main_lazy_smart_sparse ./main_lazy_smart_sparse_chunk ./main_lazy_smart_sparse_chunk_parfor
+	  do
+	    echo RUNNING $prog
+	    ./instance.sh $prog random_del_fireps/instance_${x}_${i}_dim_${dim}.firep reference.out
+	    diff -sq reference.out compare.out
+	  done
+	done
+      done
+  done
+
+#Benchmark for random delaunay, large data
+
+for dim in 1 2
+  do
+  for x in 80000 160000 320000 640000
+    do
+      for i in 1 2 3 4 5
+	do
+          echo BENCHMARK FOR random_del_firep_${x}_${i}_dim_${dim}.txt
+	  echo RUNNING main_lazy_smart_sparse
+	  ./instance.sh ./main_lazy_smart_sparse random_del_fireps/instance_${x}_${i}_dim_${dim}.firep reference.out
+	  for prog in ./main_lazy_smart_sparse_chunk ./main_lazy_smart_sparse_chunk_parfor ./main_lazy_smart_sparse_chunk_parfor_parmgkb
+	  do
+	    echo RUNNING $prog
+	    ./instance.sh $prog random_del_fireps/instance_${x}_${i}_dim_${dim}.firep compare.out
+	    diff -sq reference.out compare.out
+	  done
+	  echo RUNNING main_lazy_smart_sparse_chunk_parfor_clearing
+	  ./instance.sh ./main_lazy_smart_sparse_chunk_parfor_clearing random_del_fireps/instance_${x}_${i}_dim_${dim}.firep compare.out
+	  wc -l reference.out compare.out
+	  #diff -sq reference.out compare.out
+	done
       done
   done
